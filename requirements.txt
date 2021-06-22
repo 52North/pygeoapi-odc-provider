@@ -1,2 +1,4 @@
 pygeoapi
 datacube==1.8.3
+pyproj
+pandas
