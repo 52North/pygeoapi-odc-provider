@@ -2,7 +2,9 @@
 
 Provider plugin for pygeoapi to include Open Data Cube as a data resource.
 
-A new collection can be added to the pygeoapi config.yaml with the following provider section:
+Install: `python setup.py install`
+
+A new collection can be added to the pygeoapi config.yaml with the following provider section after this library was installed:
 
 ```
 providers:
