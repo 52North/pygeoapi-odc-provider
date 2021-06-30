@@ -37,7 +37,7 @@ from pandas import isnull
 import numpy as np
 from pyproj import CRS, Transformer
 from rasterio.io import MemoryFile
-from rasterio.transform import from_bounds
+from rasterio import Affine
 
 from datacube.utils.geometry import bbox_union
 from datacube.utils.geometry import CRS as CRS_dc
@@ -225,8 +225,12 @@ class OpenDataCubeProvider(BaseProvider):
             out_meta['nodata'] = self._measurement_properties[0]['nodata']
             out_meta['count'] = len(bands)
             # ToDO: Coordinates seem to be shifted by resolution/2
-            out_meta['transform'] = from_bounds(out_meta['bbox'][0], out_meta['bbox'][1], out_meta['bbox'][2],
-                                                out_meta['bbox'][2], out_meta['width'], out_meta['height'])
+            out_meta['transform'] = Affine(self._coverage_properties['transform'][0],
+                                           self._coverage_properties['transform'][1],
+                                           self._coverage_properties['transform'][2],
+                                           self._coverage_properties['transform'][3],
+                                           self._coverage_properties['transform'][4],
+                                           self._coverage_properties['transform'][5])
 
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
