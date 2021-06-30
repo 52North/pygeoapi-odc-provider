@@ -200,6 +200,9 @@ class OpenDataCubeProvider(BaseProvider):
         # ------------------------------------- #
         # Return coverage json or native format #
         # ------------------------------------- #
+        if len(bands) == 0:
+            bands = list(dataset.keys())   # select all bands
+
         out_meta = {'bbox': [minx, miny, maxx, maxy],
                     'width': abs((maxx - minx) / self._coverage_properties['resx']),
                     'height': abs((maxy - miny) / self._coverage_properties['resy']),
@@ -221,6 +224,7 @@ class OpenDataCubeProvider(BaseProvider):
             out_meta['dtype'] = self._measurement_properties[0]['dtype']
             out_meta['nodata'] = self._measurement_properties[0]['nodata']
             out_meta['count'] = len(bands)
+            # ToDO: Coordinates seem to be shifted by resolution/2
             out_meta['transform'] = from_bounds(out_meta['bbox'][0], out_meta['bbox'][1], out_meta['bbox'][2],
                                                 out_meta['bbox'][2], out_meta['width'], out_meta['height'])
 
@@ -280,10 +284,7 @@ class OpenDataCubeProvider(BaseProvider):
             'ranges': {}
         }
 
-        if len(metadata['bands']) > 0:  # all nds
-            bands_select = metadata['bands']
-        else:
-            bands_select = list(dataset.keys())
+        bands_select = metadata['bands']
 
         LOGGER.debug('bands selected: {}'.format(bands_select))
         for bs in bands_select:
