@@ -15,12 +15,14 @@ from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
                                     ProviderQueryError)
 
 from pandas import isnull
+import numpy as np
 from pyproj import CRS, Transformer
+from rasterio.io import MemoryFile
+from rasterio.transform import from_bounds
 
 from datacube.utils.geometry import bbox_union
 from datacube.utils.geometry import CRS as CRS_dc
 import datacube
-from datacube.utils.masking import mask_invalid_data
 
 import logging
 
@@ -48,6 +50,7 @@ class OpenDataCubeProvider(BaseProvider):
         try:
             self.crs_obj = None  # datacube.utils.geometry.CRS
             self._coverage_properties = self._get_coverage_properties()
+            self._measurement_properties = self._get_measurement_properties()
             self.crs = self._coverage_properties['crs_uri']
             self.axes = self._coverage_properties['axes']
             self.num_bands = self._coverage_properties['num_bands']
@@ -88,25 +91,11 @@ class OpenDataCubeProvider(BaseProvider):
         bands = range_subset
         LOGGER.debug('Bands: {}, subsets: {}'.format(bands, subsets))
 
-        minx, miny, maxx, maxy = self._coverage_properties['bbox']   # full extent of collection
+        # initial bbox, full extent of collection
+        minx, miny, maxx, maxy = self._coverage_properties['bbox']
 
-        # Parameters for datacube.load()
-        # Note: resolution and align expect the following coordinate order: (y, x)
-        # Note: datacube.Datacube.load accepts all of the following parameters for spatial subsets
-        #       independent of the crs: 'latitude' or 'lat' or 'y' / 'longitude' or 'lon' or 'long' or 'x'
-        params = {
-            "crs": "epsg:{}".format(self.crs_obj.to_epsg()),
-            "align": (abs(self._coverage_properties['resy']/2),
-                      abs(self._coverage_properties['resx']/2)),   # in the units of output_crs (if output_crs is not supplied, crs of stored data is used)
-            'x': (minx, maxx),
-            'y': (miny, maxy),
-        }
-
-        if all([not bands, not subsets, not bbox, format_ != 'json']):
-            LOGGER.debug('No parameters specified, returning native data')
-            data = self.dc.load(product=self.product_name, **params)
-            data.time.attrs.pop('units', None)
-            return data.to_netcdf()
+        if all([not bands, not subsets, not bbox]):
+            LOGGER.debug('No parameters specified')
 
         if all([self._coverage_properties['x_axis_label'] in subsets,
                 self._coverage_properties['y_axis_label'] in subsets,
@@ -151,16 +140,24 @@ class OpenDataCubeProvider(BaseProvider):
             miny = subsets[y][0]
             maxy = subsets[y][1]
 
-        # ----------------------------------------- #
-        # Additional parameters for datacube.load() #
-        # ----------------------------------------- #
+        # ------------------------------ #
+        # Parameters for datacube.load() #
+        # ------------------------------ #
+
+        # Note: resolution and align expect the following coordinate order: (y, x)
+        # Note: datacube.Datacube.load accepts all of the following parameters for spatial subsets
+        #       independent of the crs: 'latitude' or 'lat' or 'y' / 'longitude' or 'lon' or 'long' or 'x'
+        params = {
+            "crs": "epsg:{}".format(self.crs_obj.to_epsg()),
+            "align": (abs(self._coverage_properties['resy'] / 2),
+                      abs(self._coverage_properties['resx'] / 2)),
+            # in the units of output_crs (if output_crs is not supplied, crs of stored data is used)
+            'x': (minx, maxx),
+            'y': (miny, maxy),
+        }
+
         if len(bands) > 0:
             params['measurements'] = bands
-
-        if len(bbox) or (self._coverage_properties['x_axis_label'] in subsets and
-                         self._coverage_properties['y_axis_label'] in subsets):
-            params['x'] = (minx, maxx)
-            params['y'] = (miny, maxy)
 
         # ToDo: enable output in different crs? Does API Coverages support this?
         # ToDo: check if reprojection is necessary
@@ -173,13 +170,13 @@ class OpenDataCubeProvider(BaseProvider):
         # ---------------------- #
         # Load data via datacube #
         # ---------------------- #
-        data = self.dc.load(product=self.product_name, **params)
+        dataset = self.dc.load(product=self.product_name, **params)
 
-        # Use 'data.time.attrs.pop('units', None)' to prevent the following error:
+        # Use 'dataset.time.attrs.pop('units', None)' to prevent the following error:
         # "ValueError: failed to prevent overwriting existing key units in attrs on variable 'time'.
         # This is probably an encoding field used by xarray to describe how a variable is serialized.
         # To proceed, remove this key from the variable's attributes manually."
-        data.time.attrs.pop('units', None)
+        dataset.time.attrs.pop('units', None)
 
         # ------------------------------------- #
         # Return coverage json or native format #
@@ -189,20 +186,44 @@ class OpenDataCubeProvider(BaseProvider):
                     'height': abs((maxy - miny) / self._coverage_properties['resy']),
                     'bands': bands}
 
+        if self.options is not None:
+            LOGGER.debug('Adding dataset options')
+            for key, value in self.options.items():
+                out_meta[key] = value
+
         if format_ == 'json':
             LOGGER.debug('Creating output in CoverageJSON')
-            return self.gen_covjson(out_meta, data)
+            return self.gen_covjson(out_meta, dataset)
+
+        elif format_.lower() == 'geotiff':
+            # ToDo: check if there is more than one time slice
+            out_meta['driver'] = 'GTiff'
+            out_meta['crs'] = self.crs_obj.to_epsg()
+            out_meta['dtype'] = self._measurement_properties[0]['dtype']
+            out_meta['nodata'] = self._measurement_properties[0]['nodata']
+            out_meta['count'] = len(bands)
+            out_meta['transform'] = from_bounds(out_meta['bbox'][0], out_meta['bbox'][1], out_meta['bbox'][2],
+                                                out_meta['bbox'][2], out_meta['width'], out_meta['height'])
+
+            with MemoryFile() as memfile:
+                with memfile.open(**out_meta) as dest:
+                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))   # input is expected as (bands, rows, cols)
+
+                LOGGER.debug('Returning data as GeoTIFF')
+                return memfile.read()
 
         else:
-            LOGGER.debug('Returning data in native format')
-            # ToDo: always use netCDF?
-            return data.to_netcdf()
+            LOGGER.debug('Returning data as netCDF')
+            # Note: "If no path is provided, this function returns the resulting netCDF file as bytes; in this case,
+            # we need to use scipy, which does not support netCDF version 4 (the default format becomes NETCDF3_64BIT)."
+            # (http://xarray.pydata.org/en/stable/generated/xarray.Dataset.to_netcdf.html)
+            return dataset.to_netcdf()
 
-    def gen_covjson(self, metadata, data):
+    def gen_covjson(self, metadata, dataset):
         """
         Generate coverage as CoverageJSON representation
         :param metadata: coverage metadata
-        :param data: xarray Dataset object
+        :param dataset: xarray Dataset object
         :returns: dict of CoverageJSON representation
         """
 
@@ -243,7 +264,7 @@ class OpenDataCubeProvider(BaseProvider):
         if len(metadata['bands']) > 0:  # all nds
             bands_select = metadata['bands']
         else:
-            bands_select = list(data.keys())
+            bands_select = list(dataset.keys())
 
         LOGGER.debug('bands selected: {}'.format(bands_select))
         for bs in bands_select:
@@ -252,7 +273,7 @@ class OpenDataCubeProvider(BaseProvider):
                 'type': 'Parameter',
                 'description': bs,
                 'unit': {
-                    'symbol': data[bs].attrs['units']
+                    'symbol': dataset[bs].attrs['units']
                 },
                 'observedProperty': {
                     'id': bs,
@@ -269,11 +290,11 @@ class OpenDataCubeProvider(BaseProvider):
             for key in cj['parameters'].keys():
                 cj['ranges'][key] = {
                     'type': 'NdArray',
-                    'dataType': str(data[key].dtype),
+                    'dataType': str(dataset[key].dtype),
                     'axisNames': ['y', 'x'],
                     'shape': [metadata['height'], metadata['width']],
                 }
-                cj['ranges'][key]['values'] = data[key].values.flatten().tolist()
+                cj['ranges'][key]['values'] = dataset[key].values.flatten().tolist()
         except IndexError as err:
             LOGGER.warning(err)
             raise ProviderQueryError('Invalid query parameter')
@@ -340,25 +361,22 @@ class OpenDataCubeProvider(BaseProvider):
         :returns: CIS JSON object of rangetype metadata
         """
 
-        measurement_list = self.dc.list_measurements()
-        measurement_metadata = measurement_list.loc[self.product_name]
-
         fields = []
-        for row in range(0, len(measurement_metadata)):
+        for row in range(0, len(self._measurement_properties)):
             fields.append({
-                "id": row + 1,
+                "id": self._measurement_properties[row]['id'],
                 "type": "QuantityType",
-                "name": measurement_metadata.iloc[row]['name'],
-                "definition": measurement_metadata.iloc[row]['dtype'],
-                "nodata": measurement_metadata.iloc[row]['nodata'].item(),
+                "name": self._measurement_properties[row]['name'],
+                "definition": self._measurement_properties[row]['dtype'],
+                "nodata": self._measurement_properties[row]['nodata'],
                 "uom": {
                     # "id": "http://www.opengis.net/def/uom/UCUM/[C]", # ToDo: get correct uri for arbitrary units
                     "type": "UnitReference",
-                    "code": measurement_metadata.iloc[row]['units']
+                    "code": self._measurement_properties[row]['unit']
                 },
                 "_meta": {
                     "tags": {
-                        "Aliases": measurement_metadata.iloc[row]['aliases'],
+                        "Aliases": self._measurement_properties[row]['aliases'],
                     }
                 }
             })
@@ -420,6 +438,7 @@ class OpenDataCubeProvider(BaseProvider):
         crs_list = []
         resx_list = []
         resy_list = []
+        transform_list = []
         dim_list = []
         for dataset in self.dc.find_datasets(product=self.product_name):
             bbs.append(dataset.bounds)
@@ -427,13 +446,16 @@ class OpenDataCubeProvider(BaseProvider):
             # ToDo: check coordinate order!
             resx_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][0])
             resy_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][4])
+            transform_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'])
             dim_list.append(dataset.crs.dimensions)
 
-        # Check if all datasets have the same crs and resolution
+        # Check if all datasets have the same crs, resolution and transform
         if len(set(crs_list)) > 1:
             LOGGER.warning("Product {} has datasets with different coordinate reference systems.".format(self.product_name))
         if len(set(resx_list)) > 1 or len(set(resy_list)) > 1:
             LOGGER.warning("Product {} has datasets with different spatial resolutions.".format(self.product_name))
+        if len(set(tuple(i) for i in transform_list)) > 1:
+            LOGGER.warning("Product {} has datasets with different transforms.".format(self.product_name))
 
         bounds = bbox_union(bbs)
 
@@ -448,6 +470,8 @@ class OpenDataCubeProvider(BaseProvider):
             resx = resx_list[0]
         if resy is None:
             resy = resy_list[0]
+
+        transform = transform_list[0]
 
         # if dim_we is None:
         #     dim_we = dim_list[1]
@@ -473,6 +497,7 @@ class OpenDataCubeProvider(BaseProvider):
             'height': abs((bounds.top - bounds.bottom)/resy),
             'resx': resx,
             'resy': resy,
+            'transform': transform,
             'num_bands': num_bands,
             #'tags': 'tags'
         }
@@ -487,5 +512,27 @@ class OpenDataCubeProvider(BaseProvider):
         properties['axes'] = [
             properties['x_axis_label'], properties['y_axis_label']
         ]
+
+        return properties
+
+    def _get_measurement_properties(self):
+        """
+        Helper function to normalize measurement properties
+        :returns: `dict` of measurement properties
+        """
+
+        measurement_list = self.dc.list_measurements()
+        measurement_metadata = measurement_list.loc[self.product_name]
+
+        properties = []
+        for row in range(0, len(measurement_metadata)):
+            properties.append({
+                "id": row + 1,
+                "name": measurement_metadata.iloc[row]['name'],
+                "dtype": measurement_metadata.iloc[row]['dtype'],
+                "nodata": measurement_metadata.iloc[row]['nodata'].item(),
+                "unit": measurement_metadata.iloc[row]['units'],
+                "aliases": measurement_metadata.iloc[row]['aliases'],
+            })
 
         return properties
