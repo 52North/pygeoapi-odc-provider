@@ -16,7 +16,7 @@ setup(
     description="pygeoapi provider plugin for Open Data Cube",
     long_description="pygeoapi provider plugin for Open Data Cube",
     long_description_content_type="text/markdown",
-    license="MIT",
+    license="GNU General Public License version 2",
     url="",
     keywords=["ODC", "pygeoapi", "EO", "data cubes"],
     install_requires=requirements,
