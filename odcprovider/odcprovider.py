@@ -561,7 +561,7 @@ class OpenDataCubeProvider(BaseProvider):
                 "dtype": measurement_metadata.iloc[row]['dtype'],
                 "nodata": measurement_metadata.iloc[row]['nodata'].item(),
                 "unit": measurement_metadata.iloc[row]['units'],
-                "aliases": measurement_metadata.iloc[row]['aliases'],
+                "aliases": measurement_metadata.iloc[row]['aliases'] if 'aliases' in measurement_metadata.columns else None,
             })
 
         return properties
