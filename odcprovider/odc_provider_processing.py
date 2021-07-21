@@ -152,4 +152,4 @@ class OpenDataCubeProviderProcesses(BaseProcessor):
         return mimetype, outputs
 
     def __repr__(self):
-        return '<HelloWorldProcessor> {}'.format(self.name)
+        return '<OpenDataCubeProviderProcesses> {}'.format(self.name)
