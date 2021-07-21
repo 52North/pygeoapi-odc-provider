@@ -41,7 +41,7 @@ LOGGER = logging.getLogger(__name__)
 
 # : Process metadata and description
 PROCESS_METADATA = {
-    'version': '0.2.0',
+    'version': '0.1.0',
     'id': 'hello-world',
     'title': {
         'en': 'Hello World',
