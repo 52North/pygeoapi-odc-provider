@@ -27,5 +27,6 @@
 #
 # =================================================================
 from .odc_provider_coverages import OpenDataCubeProviderCoverages
+from .odc_provider_processing import OpenDataCubeProcessingProvider
 
 ODC_CONFIG_FILE_DEFAULT = "datacube.conf"
