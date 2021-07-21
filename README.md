@@ -26,7 +26,7 @@ Add new process can be configured by adding the following to the `config.yaml`:
       hello-world:
       type: process
       processor:
-        name: odcprovider.OpenDataCubeProviderProcesses
+        name: odcprovider.process.hello_world.HelloWorldProcessor
 ```
 
 Use the following curl call for testing the process:
@@ -53,3 +53,12 @@ with `request.json`:
    ]
 }
 ```
+
+## Changelog
+
+* **0.2.0**: add first processors
+* **0.0.1**: init with coverages provider
+
+## ToDos
+
+* [ ] Clarify License: MIT vs GPLv2 vs Apache 2.0 for service libs @52N

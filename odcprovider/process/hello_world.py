@@ -122,14 +122,14 @@ PROCESS_METADATA = {
 }
 
 
-class OpenDataCubeProviderProcesses(BaseProcessor):
+class HelloWorldProcessor(BaseProcessor):
     """Hello World Processor example"""
 
     def __init__(self, processor_def):
         """
         Initialize object
         :param processor_def: provider definition
-        :returns: pygeoapi.process.hello_world.HelloWorldProcessor
+        :returns: odcprovider.process.hello_world.HelloWorldProcessor
         """
 
         super().__init__(processor_def, PROCESS_METADATA)
@@ -152,4 +152,4 @@ class OpenDataCubeProviderProcesses(BaseProcessor):
         return mimetype, outputs
 
     def __repr__(self):
-        return '<OpenDataCubeProviderProcesses> {}'.format(self.name)
+        return '<HelloWorldProcessor> {}'.format(self.name)
