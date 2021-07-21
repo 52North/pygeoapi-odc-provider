@@ -26,6 +26,5 @@
 # Public License for more details.
 #
 # =================================================================
-from .odc_provider_constants import *
-from .odc_provider_coverages import OpenDataCubeProviderCoverages
-from .odc_provider_processing import OpenDataCubeProviderProcesses
+
+ODC_CONFIG_FILE_DEFAULT = "datacube.conf"

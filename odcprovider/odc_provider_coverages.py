@@ -35,14 +35,13 @@ import os
 import datacube
 from datacube.utils.geometry import CRS as CRS_dc
 from datacube.utils.geometry import bbox_union
+from odcprovider import ODC_CONFIG_FILE_DEFAULT
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
                                     ProviderQueryError)
 from pyproj import CRS, Transformer
 from rasterio import Affine
 from rasterio.io import MemoryFile
-
-from __init__ import ODC_CONFIG_FILE_DEFAULT
 
 import numpy as np
 
