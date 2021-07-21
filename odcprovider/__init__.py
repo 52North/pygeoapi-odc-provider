@@ -28,4 +28,5 @@
 # =================================================================
 from .odc_provider_constants import *
 from .odc_provider_coverages import OpenDataCubeProviderCoverages
+from .process.contour_lines import ContourLinesProcessor
 from .process.hello_world import HelloWorldProcessor
