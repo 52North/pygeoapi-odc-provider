@@ -558,7 +558,7 @@ class OpenDataCubeProviderCoverages(BaseProvider):
                 "id": row + 1,
                 "name": measurement_metadata.iloc[row]['name'],
                 "dtype": measurement_metadata.iloc[row]['dtype'],
-                "nodata": measurement_metadata.iloc[row]['nodata'].item(),
+                "nodata": measurement_metadata.iloc[row]['nodata'],
                 "unit": measurement_metadata.iloc[row]['units'],
                 "aliases": measurement_metadata.iloc[row]['aliases'] if 'aliases' in measurement_metadata.columns else None,
             })
