@@ -29,28 +29,27 @@
 #
 # =================================================================
 
-
-from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
-                                    ProviderQueryError)
-
-from pandas import isnull
-import numpy as np
-from pyproj import CRS, Transformer
-from rasterio.io import MemoryFile
-from rasterio import Affine
-
-from datacube.utils.geometry import bbox_union
-from datacube.utils.geometry import CRS as CRS_dc
-import datacube
+import logging
 import os
 
-import logging
+import datacube
+from datacube.utils.geometry import CRS as CRS_dc
+from datacube.utils.geometry import bbox_union
+from pandas import isnull
+from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
+                                    ProviderQueryError)
+from pyproj import CRS, Transformer
+from rasterio import Affine
+from rasterio.io import MemoryFile
+
+from __init__ import ODC_CONFIG_FILE_DEFAULT
+
+import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-ODC_CONFIG_FILE_DEFAULT="datacube.conf"
 
-class OpenDataCubeProvider(BaseProvider):
+class OpenDataCubeProviderCoverages(BaseProvider):
     """OpenDataCube Provider
     This provider plugin maps an OGC collection to an ODC product
     """
@@ -72,7 +71,8 @@ class OpenDataCubeProvider(BaseProvider):
         self.product_name = provider_def['product']
 
         try:
-            self.crs_obj = None  # datacube.utils.geometry.CRS
+            # datacube.utils.geometry.CRS
+            self.crs_obj = None
             self._coverage_properties = self._get_coverage_properties()
             self._measurement_properties = self._get_measurement_properties()
             self.crs = self._coverage_properties['crs_uri']
@@ -134,7 +134,7 @@ class OpenDataCubeProvider(BaseProvider):
         if len(bbox) > 0:
             minxbox, minybox, maxxbox, maxybox = bbox
 
-            crs_src = CRS.from_epsg(4326)   # fixed by specification
+            crs_src = CRS.from_epsg(4326)  # fixed by specification
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
 
             if crs_src == crs_dest:
@@ -206,7 +206,7 @@ class OpenDataCubeProvider(BaseProvider):
         # Return coverage json or native format #
         # ------------------------------------- #
         if len(bands) == 0:
-            bands = list(dataset.keys())   # select all bands
+            bands = list(dataset.keys())  # select all bands
 
         out_meta = {'bbox': [minx, miny, maxx, maxy],
                     'width': abs((maxx - minx) / self._coverage_properties['resx']),
@@ -239,7 +239,7 @@ class OpenDataCubeProvider(BaseProvider):
 
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
-                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))   # input is expected as (bands, rows, cols)
+                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))  # input is expected as (bands, rows, cols)
 
                 LOGGER.debug('Returning data as GeoTIFF')
                 return memfile.read()
@@ -522,13 +522,13 @@ class OpenDataCubeProvider(BaseProvider):
             'bbox_units': 'deg',
             'x_axis_label': 'Lon',
             'y_axis_label': 'Lat',
-            'width': abs((bounds.right - bounds.left)/resx),
-            'height': abs((bounds.top - bounds.bottom)/resy),
+            'width': abs((bounds.right - bounds.left) / resx),
+            'height': abs((bounds.top - bounds.bottom) / resy),
             'resx': resx,
             'resy': resy,
             'transform': transform,
             'num_bands': num_bands,
-            #'tags': 'tags'
+            # 'tags': 'tags'
         }
 
         if self.crs_obj.projected:
