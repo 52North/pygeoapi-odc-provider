@@ -16,3 +16,40 @@ providers:
         name: NetCDF
         mimetype: application/netcdf
 ```
+
+
+Add new process can be configured by adding the following to the `config.yaml`:
+
+```yaml
+[...]
+  resources:
+      hello-world:
+      type: process
+      processor:
+        name: odcprovider.OpenDataCubeProviderProcesses
+```
+
+Use the following curl call for testing the process:
+
+```sh
+curl -i -s -H "Content-Type: application/json" -X POST -d @request.json 'https://17.testbed.dev.52north.org/geodatacube/processes/hello-world/jobs'
+```
+
+with `request.json`:
+
+```json
+{
+   "inputs": [
+      {
+         "id": "name",
+         "value": "Mr Test McTestface",
+         "type": "text/plain"
+      },
+      {
+         "id": "message",
+         "value": "Your are so testy today!",
+         "type": "text/plain"
+      }
+   ]
+}
+```

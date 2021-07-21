@@ -60,7 +60,7 @@ PROCESS_METADATA = {
         'type': 'text/html',
         'rel': 'canonical',
         'title': 'information',
-        'href': 'https://example.org/process',
+        'href': 'https://github.com/geopython/pygeoapi/blob/master/pygeoapi/process/hello_world.py',
         'hreflang': 'en-US'
     }],
     'inputs': [{
