@@ -42,13 +42,11 @@ from rasterio import Affine
 from datacube.utils.geometry import bbox_union
 from datacube.utils.geometry import CRS as CRS_dc
 import datacube
-import os
 
 import logging
 
 LOGGER = logging.getLogger(__name__)
 
-ODC_CONFIG_FILE_DEFAULT="datacube.conf"
 
 class OpenDataCubeProvider(BaseProvider):
     """OpenDataCube Provider
@@ -64,11 +62,9 @@ class OpenDataCubeProvider(BaseProvider):
 
         super().__init__(provider_def)
 
-        dc_config_file = os.environ.get("ODC_CONFIG_FILE")
-        if dc_config_file is None:
-            dc_config_file = ODC_CONFIG_FILE_DEFAULT
+        # Initialise the Datacube, using standard configuration finding
+        self.dc = datacube.Datacube(app="pygeoapi_odcprovider")
 
-        self.dc = datacube.Datacube(config=dc_config_file)
         self.product_name = provider_def['product']
 
         try:
