@@ -12,6 +12,5 @@
 # limitations under the License.
 #
 # =================================================================
-from .constants import *
-from .coverages import OpenDataCubeCoveragesProvider
-from .processes import *
+
+ODC_CONFIG_FILE_DEFAULT = "datacube.conf"
