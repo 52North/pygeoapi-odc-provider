@@ -1,56 +1,40 @@
 # =================================================================
 # Copyright (C) 2021-2021 52°North Spatial Information Research GmbH
 #
-# This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License version 2 as published
-# by the Free Software Foundation.
-#
-# If the program is linked with libraries which are licensed under one of
-# the following licenses, the combination of the program with the linked
-# library is not considered a "derivative work" of the program:
-#
-#     - Apache License, version 2.0
-#     - Apache Software License, version 1.0
-#     - GNU Lesser General Public License, version 3
-#     - Mozilla Public License, versions 1.0, 1.1 and 2.0
-#     - Common Development and Distribution License (CDDL), version 1.0
-#
-# Therefore the distribution of the program linked with libraries licensed
-# under the aforementioned licenses, is permitted by the copyright holders
-# if the distribution is compliant with both the GNU General Public
-# License version 2 and the aforementioned licenses.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#    http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Based on pygeoapi's RasterioProvider (https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/rasterio_.py)
 #
 # =================================================================
 
-
-from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
-                                    ProviderQueryError)
-
-from pandas import isnull
-import numpy as np
-from pyproj import CRS, Transformer
-from rasterio.io import MemoryFile
-from rasterio import Affine
-
-from datacube.utils.geometry import bbox_union
-from datacube.utils.geometry import CRS as CRS_dc
-import datacube
+import logging
 import os
 
-import logging
+import datacube
+from datacube.utils.geometry import CRS as CRS_dc
+from datacube.utils.geometry import bbox_union
+from odcprovider import ODC_CONFIG_FILE_DEFAULT
+from pandas import isnull
+from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
+                                    ProviderQueryError)
+from pyproj import CRS, Transformer
+from rasterio import Affine
+from rasterio.io import MemoryFile
+
+import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-ODC_CONFIG_FILE_DEFAULT="datacube.conf"
 
-class OpenDataCubeProvider(BaseProvider):
+class OpenDataCubeCoveragesProvider(BaseProvider):
     """OpenDataCube Provider
     This provider plugin maps an OGC collection to an ODC product
     """
@@ -72,7 +56,8 @@ class OpenDataCubeProvider(BaseProvider):
         self.product_name = provider_def['product']
 
         try:
-            self.crs_obj = None  # datacube.utils.geometry.CRS
+            # datacube.utils.geometry.CRS
+            self.crs_obj = None
             self._coverage_properties = self._get_coverage_properties()
             self._measurement_properties = self._get_measurement_properties()
             self.crs = self._coverage_properties['crs_uri']
@@ -134,7 +119,7 @@ class OpenDataCubeProvider(BaseProvider):
         if len(bbox) > 0:
             minxbox, minybox, maxxbox, maxybox = bbox
 
-            crs_src = CRS.from_epsg(4326)   # fixed by specification
+            crs_src = CRS.from_epsg(4326)  # fixed by specification
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
 
             if crs_src == crs_dest:
@@ -206,7 +191,7 @@ class OpenDataCubeProvider(BaseProvider):
         # Return coverage json or native format #
         # ------------------------------------- #
         if len(bands) == 0:
-            bands = list(dataset.keys())   # select all bands
+            bands = list(dataset.keys())  # select all bands
 
         out_meta = {'bbox': [minx, miny, maxx, maxy],
                     'width': abs((maxx - minx) / self._coverage_properties['resx']),
@@ -239,7 +224,7 @@ class OpenDataCubeProvider(BaseProvider):
 
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
-                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))   # input is expected as (bands, rows, cols)
+                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))  # input is expected as (bands, rows, cols)
 
                 LOGGER.debug('Returning data as GeoTIFF')
                 return memfile.read()
@@ -522,13 +507,13 @@ class OpenDataCubeProvider(BaseProvider):
             'bbox_units': 'deg',
             'x_axis_label': 'Lon',
             'y_axis_label': 'Lat',
-            'width': abs((bounds.right - bounds.left)/resx),
-            'height': abs((bounds.top - bounds.bottom)/resy),
+            'width': abs((bounds.right - bounds.left) / resx),
+            'height': abs((bounds.top - bounds.bottom) / resy),
             'resx': resx,
             'resy': resy,
             'transform': transform,
             'num_bands': num_bands,
-            #'tags': 'tags'
+            # 'tags': 'tags'
         }
 
         if self.crs_obj.projected:
