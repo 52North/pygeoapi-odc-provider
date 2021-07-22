@@ -47,7 +47,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         super().__init__(provider_def)
 
         self.dc = datacube.Datacube(app='pygeoapi_provider')
-        self.product_name = provider_def['product']
 
         try:
             # datacube.utils.geometry.CRS
@@ -173,7 +172,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ---------------------- #
         # Load data via datacube #
         # ---------------------- #
-        dataset = self.dc.load(product=self.product_name, **params)
+        dataset = self.dc.load(product=self.data, **params)
 
         # Use 'dataset.time.attrs.pop('units', None)' to prevent the following error:
         # "ValueError: failed to prevent overwriting existing key units in attrs on variable 'time'.
@@ -415,7 +414,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.model.DatasetType.html#datacube.model.DatasetType
 
         product_list = self.dc.list_products()
-        product_metadata = product_list[product_list['name'] == self.product_name]
+        product_metadata = product_list[product_list['name'] == self.data]
 
         res = product_metadata.iloc[0]['resolution']
         if isinstance(res, tuple):
@@ -437,7 +436,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         #     dim_we = None
         #     dim_ns = None
 
-        num_bands = len(self.dc.index.products.get_by_name(self.product_name).measurements)
+        num_bands = len(self.dc.index.products.get_by_name(self.data).measurements)
 
         # ---------------- #
         # Dataset metadata #
@@ -448,7 +447,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         resy_list = []
         transform_list = []
         dim_list = []
-        for dataset in self.dc.find_datasets(product=self.product_name):
+        for dataset in self.dc.find_datasets(product=self.data):
             bbs.append(dataset.bounds)
             crs_list.append(dataset.crs)
             # ToDo: check coordinate order!
@@ -459,11 +458,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         # Check if all datasets have the same crs, resolution and transform
         if len(set(crs_list)) > 1:
-            LOGGER.warning("Product {} has datasets with different coordinate reference systems.".format(self.product_name))
+            LOGGER.warning("Product {} has datasets with different coordinate reference systems.".format(self.data))
         if len(set(resx_list)) > 1 or len(set(resy_list)) > 1:
-            LOGGER.warning("Product {} has datasets with different spatial resolutions.".format(self.product_name))
+            LOGGER.warning("Product {} has datasets with different spatial resolutions.".format(self.data))
         if len(set(tuple(i) for i in transform_list)) > 1:
-            LOGGER.warning("Product {} has datasets with different transforms.".format(self.product_name))
+            LOGGER.warning("Product {} has datasets with different transforms.".format(self.data))
 
         bounds = bbox_union(bbs)
 
@@ -530,7 +529,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         """
 
         measurement_list = self.dc.list_measurements()
-        measurement_metadata = measurement_list.loc[self.product_name]
+        measurement_metadata = measurement_list.loc[self.data]
 
         properties = []
         for row in range(0, len(measurement_metadata)):

@@ -10,8 +10,7 @@ A new collection can be added to the pygeoapi config.yaml with the following pro
 providers:
   - type: coverage
     name: odcprovider.OpenDataCubeCoveragesProvider
-    data: ~/.datacube.conf   # not used at the moment
-    product: <product_name>
+    data: <product_name>
     format:
         name: NetCDF
         mimetype: application/netcdf
