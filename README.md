@@ -39,18 +39,10 @@ with `request.json`:
 
 ```json
 {
-   "inputs": [
-      {
-         "id": "name",
-         "value": "Mr Test McTestface",
-         "type": "text/plain"
-      },
-      {
-         "id": "message",
-         "value": "Your are so testy today!",
-         "type": "text/plain"
-      }
-   ]
+   "inputs": {
+      "name": "Mr Test McTestface",
+      "message": "Your are so testy today!"
+   }
 }
 ```
 
