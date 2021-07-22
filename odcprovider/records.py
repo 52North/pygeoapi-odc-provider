@@ -101,9 +101,13 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         measurements = list(filter(lambda d: d['product'] in self.data,
                                    self.dc.list_measurements(with_pandas=False)))
 
+        features = [{
+            'id': product.name
+        }]
+
         feature_collection = {
             'type': 'FeatureCollection',
-            'features': []
+            'features': features
         }
 
         return feature_collection
