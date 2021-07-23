@@ -93,6 +93,19 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
 
+
+        features = []
+        for product in self.dc.list_products():
+            features.append(self._encodeAsRecord(product))
+
+        feature_collection = {
+            'type': 'FeatureCollection',
+            'features': []
+        }
+
+        return feature_collection
+
+    def _encodeAsRecord(self, product):
         # product = self.dc.index.products.get_by_name(self.data)
         #
         # measurements = list(filter(lambda d: d['product'] in self.data,
@@ -104,10 +117,15 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         #
         #     ]
         # }]
-
-        feature_collection = {
-            'type': 'FeatureCollection',
-            'features': []
+        return {
+            'id': product.name,
+            'properties': self._encodeRecordProperties(product)
         }
 
-        return feature_collection
+    def _encodeRecordProperties(self, product):
+        properties = []
+
+        for property in product.keys():
+            properties.append({property: product.get(property)})
+
+        return properties
