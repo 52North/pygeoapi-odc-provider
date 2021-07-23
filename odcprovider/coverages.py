@@ -27,7 +27,7 @@ from pyproj import CRS, Transformer
 from rasterio import Affine
 from rasterio.io import MemoryFile
 
-from odcprovider import OdcConnector
+from .connector import OdcConnector
 
 import numpy as np
 

@@ -13,7 +13,7 @@
 # =================================================================
 import logging
 
-from odcprovider import OdcConnector
+from .connector import OdcConnector
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderGenericError,
                                     ProviderConnectionError,
