@@ -26,7 +26,8 @@ class OpenDataCubeRecordsProvider(BaseProvider):
     """
     OGC API Records provider for an OpenDataCube instance
 
-    Each OpenDataCube product family is one collection, hence we have one record per collection per dataset
+    This provider MUST be used in its own pygeoapi collection and not as part of
+    an already existing data containing collection.
     """
 
     def __init__(self, provider_def):
@@ -41,11 +42,6 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         super().__init__(provider_def)
 
         self.dc = datacube.Datacube(app='pygeoapi_provider')
-
-        products = [d['name'] for d in self.dc.list_products(with_pandas=False)]
-
-        if self.data not in products:
-            raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance")
 
         LOGGER.debug("Provider initiated: name: '{}', type: '{}', data: '{}'".format(self.name, self.type, self.data))
 
@@ -92,22 +88,26 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         # TODO datasets oder measurements auflisten? tendiere zu measurements
         # TODO woher weiß ich, in welcher Collection ich bin und daher, welches Produkt ich nehmen muss? z.Zt. Config -> data
         # self.data
+        # TODO move to own catalog collection and provide all products all records aka features in the feature collection
 
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
 
-        product = self.dc.index.products.get_by_name(self.data)
-
-        measurements = list(filter(lambda d: d['product'] in self.data,
-                                   self.dc.list_measurements(with_pandas=False)))
-
-        features = [{
-            'id': product.name
-        }]
+        # product = self.dc.index.products.get_by_name(self.data)
+        #
+        # measurements = list(filter(lambda d: d['product'] in self.data,
+        #                            self.dc.list_measurements(with_pandas=False)))
+        #
+        # features = [{
+        #     'id': product.name,
+        #     'properties': [
+        #
+        #     ]
+        # }]
 
         feature_collection = {
             'type': 'FeatureCollection',
-            'features': features
+            'features': []
         }
 
         return feature_collection
