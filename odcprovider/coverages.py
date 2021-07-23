@@ -21,7 +21,9 @@ import datacube
 from datacube.utils.geometry import CRS as CRS_dc
 from datacube.utils.geometry import bbox_union
 from pandas import isnull
-from pygeoapi.provider.base import (BaseProvider, ProviderConnectionError,
+from pygeoapi.provider.base import (BaseProvider,
+                                    ProviderConnectionError,
+                                    ProviderGenericError,
                                     ProviderQueryError)
 from pyproj import CRS, Transformer
 from rasterio import Affine
@@ -47,6 +49,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         super().__init__(provider_def)
 
         self.dc = datacube.Datacube(app='pygeoapi_provider')
+
+        products = [d['name'] for d in self.dc.list_products(with_pandas=False)]
+
+        if self.data not in products:
+            raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance"
+                                       .format(self.data))
 
         try:
             # datacube.utils.geometry.CRS
@@ -207,7 +215,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             out_meta['dtype'] = self._measurement_properties[0]['dtype']
             out_meta['nodata'] = self._measurement_properties[0]['nodata']
             out_meta['count'] = len(bands)
-            # ToDO: Coordinates seem to be shifted by resolution/2
+            # ToDo: Coordinates seem to be shifted by resolution/2
             out_meta['transform'] = Affine(self._coverage_properties['transform'][0],
                                            self._coverage_properties['transform'][1],
                                            self._coverage_properties['transform'][2],
