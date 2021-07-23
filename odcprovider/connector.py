@@ -26,13 +26,13 @@ class OdcConnector():
     def __init__(self):
         self.dc = None
 
-    def list_product_names(self):
-        self._ensure_init()
-        return [d['name'] for d in self.dc.list_products(with_pandas=False)]
-
     def _ensure_init(self):
         if self.dc is None:
             self.dc = datacube.Datacube(app='pygeoapi_provider')
+
+    def list_product_names(self):
+        self._ensure_init()
+        return [d['name'] for d in self.dc.list_products(with_pandas=False)]
 
     def load(self, product, **params):
         self._ensure_init()
@@ -46,7 +46,7 @@ class OdcConnector():
         self._ensure_init()
         return len(self.dc.index.products.get_by_name(product).measurements)
 
-    def find_datasets(self, product, **search_terms):
+    def find_datasets(self, **search_terms):
         self._ensure_init()
         return self.dc.find_datasets(**search_terms)
 
@@ -64,7 +64,7 @@ class OdcConnector():
             raise ValueError("product MUST be in datacube")
 
         bbs = []
-        for dataset in self.dc.find_datasets(product=self.data):
+        for dataset in self.find_datasets(product=product):
             bbs.append(dataset.bounds)
 
         return bbox_union(bbs)

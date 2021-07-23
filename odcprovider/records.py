@@ -95,13 +95,18 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
 
         features = []
-        for product in self.dc.list_products():
+        for product in self.dc.list_products(with_pandas=False):
             features.append(self._encodeAsRecord(product))
 
         feature_collection = {
             'type': 'FeatureCollection',
-            'features': []
+            'features': features
         }
+
+        feature_collection['numberMatched'] = len(features)
+        feature_collection['numberReturned'] = len(features)
+
+        print(feature_collection)
 
         return feature_collection
 
@@ -118,14 +123,14 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         #     ]
         # }]
         return {
-            'id': product.name,
+            'id': product.get('name'),
             'properties': self._encodeRecordProperties(product)
         }
 
     def _encodeRecordProperties(self, product):
-        properties = []
+        properties = {}
 
         for property in product.keys():
-            properties.append({property: product.get(property)})
+            properties.update({property: product.get(property)})
 
         return properties
