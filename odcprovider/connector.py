@@ -23,6 +23,9 @@ class OdcConnector():
     Collection of convenience functions to interact with an OpenDataCube instance
     """
 
+    def __init__(self):
+        self.dc = None
+
     def list_product_names(self):
         self._ensure_init()
         return [d['name'] for d in self.dc.list_products(with_pandas=False)]
