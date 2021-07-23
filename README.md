@@ -4,6 +4,8 @@ Provider plugin for pygeoapi to include Open Data Cube as a data resource.
 
 Install: `python setup.py install` or `python -m pip install .`
 
+## API Coverages
+
 A new collection can be added to the pygeoapi config.yaml with the following provider section after this library was installed:
 
 ```yaml
@@ -16,6 +18,7 @@ providers:
         mimetype: application/netcdf
 ```
 
+## API Processes
 
 Add new process can be configured by adding the following to the `config.yaml`:
 
@@ -45,10 +48,44 @@ with `request.json`:
 }
 ```
 
+
+## API Records
+
+To use the OpenDataCubeRecordsProvider, add the following collection resource. The name **catalog** is not required but
+useful. Adjust the bbox to your data.
+
+```yaml
+resources:
+    catalog:
+      type: collection
+      title: Catalog
+      description: Catalog collection providing metadata using OGC API records
+      keywords:
+        - records
+        - metadata
+        - search
+      links:
+        - type: text/html
+          rel: canonical
+          title: OGC API records DRAFT OGC#20-004
+          href: https://docs.ogc.org/DRAFTS/20-004.html#record-schema-overview
+          hreflang: en-US
+      extents:
+        spatial:
+          bbox: [-142.2750,41.6276,-58.2405,83.5941]
+          # EPSG#4617
+          crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+      providers:
+        - type: record
+          name: odcprovider.OpenDataCubeRecordsProvider
+          data: not-used-atm
+```
+
 ## Changelog
 
+* **0.3.0**: WIP records provider
 * **0.2.0**: add first processors
-* **0.0.1**: init with coverages provider
+* **0.0.1**: WIP coverages provider
 
 ## ToDos
 

@@ -12,7 +12,7 @@ setup(
         "": ["*.txt"]
     },
     include_package_data=True,
-    version="0.2.0",
+    version="0.3.0",
     description="pygeoapi provider plugin for Open Data Cube",
     long_description="pygeoapi provider plugin for Open Data Cube",
     long_description_content_type="text/markdown",
