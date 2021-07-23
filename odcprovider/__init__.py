@@ -15,4 +15,4 @@
 from .coverages import OpenDataCubeCoveragesProvider
 from .processes import *
 from .records import OpenDataCubeRecordsProvider
-from .datacube import OdcConnector
+from .connector import OdcConnector
