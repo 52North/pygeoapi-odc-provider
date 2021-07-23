@@ -3,3 +3,5 @@ dist
 build
 *.egg-info/
 .idea
+datacube.conf
+request.json
