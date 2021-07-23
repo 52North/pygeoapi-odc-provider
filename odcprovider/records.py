@@ -13,7 +13,7 @@
 # =================================================================
 import logging
 
-import datacube
+from odcprovider import OdcConnector
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderGenericError,
                                     ProviderConnectionError,
@@ -41,7 +41,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         super().__init__(provider_def)
 
-        self.dc = datacube.Datacube(app='pygeoapi_provider')
+        self.dc = OdcConnector()
 
         LOGGER.debug("Provider initiated: name: '{}', type: '{}', data: '{}'".format(self.name, self.type, self.data))
 

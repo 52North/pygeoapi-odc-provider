@@ -16,10 +16,8 @@
 # =================================================================
 
 import logging
-
-import datacube
+# TODO move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_dc
-from datacube.utils.geometry import bbox_union
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
@@ -28,6 +26,8 @@ from pygeoapi.provider.base import (BaseProvider,
 from pyproj import CRS, Transformer
 from rasterio import Affine
 from rasterio.io import MemoryFile
+
+from odcprovider import OdcConnector
 
 import numpy as np
 
@@ -48,9 +48,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         super().__init__(provider_def)
 
-        self.dc = datacube.Datacube(app='pygeoapi_provider')
+        self.dc = OdcConnector()
 
-        products = [d['name'] for d in self.dc.list_products(with_pandas=False)]
+        products = self.dc.list_product_names()
 
         if self.data not in products:
             raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance"
@@ -444,19 +444,17 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         #     dim_we = None
         #     dim_ns = None
 
-        num_bands = len(self.dc.index.products.get_by_name(self.data).measurements)
+        num_bands = self.dc.number_of_bands(self.data)
 
         # ---------------- #
         # Dataset metadata #
         # ---------------- #
-        bbs = []
         crs_list = []
         resx_list = []
         resy_list = []
         transform_list = []
         dim_list = []
         for dataset in self.dc.find_datasets(product=self.data):
-            bbs.append(dataset.bounds)
             crs_list.append(dataset.crs)
             # ToDo: check coordinate order!
             resx_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][0])
@@ -472,7 +470,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if len(set(tuple(i) for i in transform_list)) > 1:
             LOGGER.warning("Product {} has datasets with different transforms.".format(self.data))
 
-        bounds = bbox_union(bbs)
+        bounds = self.dc.bbox_of_product(self.data)
 
         # Use dataset metadata if metadata was not specified on product level
         # ToDO: support different crs/resolution for different datasets including reprojection
