@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
+import datetime
 import logging
 
 from .connector import OdcConnector
@@ -90,22 +91,30 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
 
+        if startindex < 0:
+            raise ProviderQueryError("startIndex < 0 makes no sense!")
 
         features = []
         for product in self.dc.list_products(with_pandas=False):
             features.append(self._encodeAsRecord(product))
 
+        # apply limit and start index
+        all_count = len(features)
+        if len(features) > limit:
+            features = features[startindex:(startindex+limit)]
+
         feature_collection = {
             'type': 'FeatureCollection',
+            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'numberMatched': all_count,
+            'numberReturned': len(features),
             'features': features
         }
 
-        feature_collection['numberMatched'] = len(features)
-        feature_collection['numberReturned'] = len(features)
-
-        print(feature_collection)
-
-        return feature_collection
+        if resulttype is 'hit limit':
+            return len(features)
+        else:
+            return feature_collection
 
     def _encodeAsRecord(self, product):
         # product = self.dc.index.products.get_by_name(self.data)
