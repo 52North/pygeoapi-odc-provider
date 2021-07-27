@@ -49,7 +49,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
               bbox=[], datetime_=None, properties=[], sortby=[],
               select_properties=[], skip_geometry=False, q=None, **kwargs):
         """
-        query TinyDB document store
+        query OpenDataCube products
         :param startindex: starting record to return (default 0)
         :param limit: number of records to return (default 10)
         :param resulttype: return results or hit limit (default results)
@@ -86,9 +86,6 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         #
         # TODO woher den Spatial Extend des Products?
         # TODO datasets oder measurements auflisten? tendiere zu measurements
-        # TODO woher weiß ich, in welcher Collection ich bin und daher, welches Produkt ich nehmen muss? z.Zt. Config -> data
-        # self.data
-        # TODO move to own catalog collection and provide all products all records aka features in the feature collection
 
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
