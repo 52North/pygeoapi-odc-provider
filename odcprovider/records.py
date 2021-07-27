@@ -15,6 +15,7 @@ import datetime
 import logging
 
 from .connector import OdcConnector
+from .utils import convert_datacube_bbox_to_geojson_wgs84_polygon
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderGenericError,
                                     ProviderConnectionError,
@@ -116,6 +117,16 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         else:
             return feature_collection
 
+    def get(self, identifier):
+        """
+        Get OpenDataCube product family by id
+
+        :param identifier: family id
+
+        :returns: `dict` of single record
+        """
+        return self._encodeDatasetTypeAsRecord(self.dc.get_product_by_id(identifier))
+
     def _encodeAsRecord(self, product):
         # product = self.dc.index.products.get_by_name(self.data)
         #
@@ -138,5 +149,29 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         for property in product.keys():
             properties.update({property: product.get(property)})
+
+        return properties
+
+
+    def _encodeDatasetTypeAsRecord(self, product):
+        return {
+            'id': product.name,
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': convert_datacube_bbox_to_geojson_wgs84_polygon(self.dc.bbox_of_product(product.name),
+                                       'epsg:' + str(product.grid_spec.crs.to_epsg()))
+            },
+            'properties': self._encodeDatasetTypeProperties(product)
+        }
+
+    def _encodeDatasetTypeProperties(self, product):
+        properties = {}
+        # properties from metadata doc
+        for metadata_key in product.metadata_doc.keys():
+            properties.update({metadata_key: product.metadata_doc.get(metadata_key).get('name')})
+
+        # properties derived via datacube.utils.documents.DocReader
+        properties.update(product.metadata.fields)
 
         return properties

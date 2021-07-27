@@ -68,3 +68,7 @@ class OdcConnector():
             bbs.append(dataset.bounds)
 
         return bbox_union(bbs)
+
+    def get_product_by_id(self, identifier):
+        self._ensure_init()
+        return self.dc.index.products.get_by_name(name=identifier)
