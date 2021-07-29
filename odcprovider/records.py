@@ -117,7 +117,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         else:
             return feature_collection
 
-    def get(self, identifier):
+    def get(self, identifier, **kwargs):
         """
         Get OpenDataCube product family by id
 
@@ -125,6 +125,8 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         :returns: `dict` of single record
         """
+        LOGGER.debug('Fetching identifier {}'.format(identifier))
+
         return self._encodeDatasetTypeAsRecord(self.dc.get_product_by_id(identifier))
 
     def _encodeAsRecord(self, product):
