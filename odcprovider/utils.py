@@ -12,30 +12,51 @@
 # limitations under the License.
 # =================================================================
 from pyproj import Transformer
+from datacube.utils.geometry import BoundingBox
 
 BBOX_COORD_PRECISION = "{:.4f}"
 
 
-def convert_datacube_bbox_to_geojson_wgs84_polygon(bbox, in_crs='epsg:4326'):
+def convert_datacube_bbox_to_wgs84(bbox, in_crs='epsg:4326', always_xy=True):
     """
     Converts the given bbox coordinates from source to wgs84
+    :param bbox: datacube.utils.geometry._base.BoundingBox
+    :param in_crs:
+    :param always_xy:
+    :returns bbox: datacube.utils.geometry._base.BoundingBox
     """
     out_crs = 'epsg:4326'
     if in_crs == out_crs:
         return bbox
 
-    transformer = Transformer.from_crs(in_crs, out_crs)
-    left_wgs84, top_wgs84 = transformer.transform(bbox.left, bbox.top)
-    right_wgs84, bottom_wgs84 = transformer.transform(bbox.right, bbox.bottom)
+    # Without always_xy=True the transform function would return (lat, long)
+    transformer = Transformer.from_crs(in_crs, out_crs, always_xy=always_xy)
+    left_wgs84, bottom_wgs84 = transformer.transform(bbox.left, bbox.bottom)
+    right_wgs84, top_wgs84 = transformer.transform(bbox.right, bbox.top)
+
+    return BoundingBox.from_points((left_wgs84, bottom_wgs84), (right_wgs84, top_wgs84))
+
+
+def convert_datacube_bbox_to_geojson_wgs84_polygon(bbox, in_crs='epsg:4326', always_xy=True):
+    """
+    Converts the given bbox coordinates from source to wgs84
+    :param bbox: datacube.utils.geometry._base.BoundingBox
+    :param in_crs:
+    :param always_xy:
+    :returns wgs84 polygon in the format [[[ul], [ur], [lr], [ll], [ul]]]
+    """
+
+    left_wgs84, bottom_wgs84, right_wgs84, top_wgs84 = convert_datacube_bbox_to_wgs84(bbox, in_crs, always_xy)
+
     #
     # Required coordinates for polygon: ul, ur, lr, ll, ul
     #
     return [[
-        [apply_precision(top_wgs84),    apply_precision(left_wgs84)],   # ul
-        [apply_precision(top_wgs84),    apply_precision(right_wgs84)],  # ur
-        [apply_precision(bottom_wgs84), apply_precision(right_wgs84)],  # lr
-        [apply_precision(bottom_wgs84), apply_precision(left_wgs84)],   # ll
-        [apply_precision(top_wgs84),    apply_precision(left_wgs84)]    # ul
+        [top_wgs84,    left_wgs84],   # ul
+        [top_wgs84,    right_wgs84],  # ur
+        [bottom_wgs84, right_wgs84],  # lr
+        [bottom_wgs84, left_wgs84],   # ll
+        [top_wgs84,    left_wgs84]    # ul
     ]]
 
 

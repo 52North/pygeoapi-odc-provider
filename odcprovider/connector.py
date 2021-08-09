@@ -55,6 +55,11 @@ class OdcConnector():
         return self.dc.list_measurements(show_archived=show_archived, with_pandas=with_pandas)
 
     def bbox_of_product(self, product):
+        """
+        Get bounding box of a product
+        :param product: product name
+        :returns datacube.utils.geometry._base.BoundingBox
+        """
         self._ensure_init()
         if product is None:
             raise ValueError("product MUST not be None")
