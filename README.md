@@ -81,6 +81,13 @@ resources:
           data: not-used-atm
 ```
 
+## Configuration of pygeoapi
+
+To use products from Open Data Cube (ODC) in pygeoapi, they must be registered as dataset collections under the resources key in pygeoapi's config file (https://docs.pygeoapi.io/en/latest/configuration.html#resources).
+
+The script `create_config.py` provides a convenient way to automatically generate a yml file containing resource entries for each ODC product.
+The script can optionally take an input file. The automatically generated resource entries will be merged/inserted there. The input file usually contains server and metadata information that is also needed to configure pygeoapi.
+
 ## Changelog
 
 * **0.3.0**: WIP records provider
