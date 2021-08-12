@@ -18,28 +18,21 @@ import argparse
 from connector import OdcConnector
 from utils import convert_datacube_bbox_to_wgs84
 
+
 # ToDo: improve formatting
 
-# datacube products to be exlcuded from pygeoapi
-excluded_products = []
-# list of links which are not available in datacube metadata
-links = {'nrcan_dsm':
-             {'title': 'High Resolution Digital Elevation Model (HRDEM) - CanElevation Series',
-              'href': 'https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995'
-              },
-         }
+def parse_parameter() -> argparse.Namespace:
 
-
-# argument parser, takes two optional comment line arguments (input and output file name)
-# ToDo: is it better to use type=argparse.FileType('w') or type=argparse.FileType('r') instead of default str?
-parser = argparse.ArgumentParser(description='Create resource entries for pygeoapi configuration. If infile is '
-                                             'provided, resource entries will be inserted there and written to outfile.')
-parser.add_argument('--infile', '-i',
-                    help='File name of the config yaml that should be merged.')
-parser.add_argument('--outfile', '-o',
-                    default='config_auto.yml',
-                    help='Output yaml file name (default: config_auto.yml)')
-args = parser.parse_args()
+    # argument parser, takes two optional comment line arguments (input and output file name)
+    # ToDo: is it better to use type=argparse.FileType('w') or type=argparse.FileType('r') instead of default str?
+    parser = argparse.ArgumentParser(description='Create resource entries for pygeoapi configuration. If infile is '
+                                                 'provided, resource entries will be inserted there and written to outfile.')
+    parser.add_argument('--infile', '-i',
+                        help='File name of the config yaml that should be merged.')
+    parser.add_argument('--outfile', '-o',
+                        default='config_auto.yml',
+                        help='Output yaml file name (default: config_auto.yml)')
+    return parser.parse_args()
 
 
 def create_resource_from_odc_product(product):
@@ -82,26 +75,38 @@ def create_resource_from_odc_product(product):
     return resource_dict
 
 
-# Create collection for each datacube product that is not excluded
-dc = OdcConnector()
+if __name__ == "__main__":
 
-data = {'resources': {}}
-for dc_product in dc.list_products(with_pandas=False):
-    if dc_product['name'] in excluded_products:
-        continue
-    else:
-        data['resources'][dc_product['name']] = create_resource_from_odc_product(dc_product)
+    # datacube products to be exlcuded from pygeoapi
+    excluded_products = ['minimal_example_eo', 'minimal_example_eo3']
 
+    # list of links which are not available in datacube metadata
+    links = {'nrcan_dsm':
+                 {'title': 'High Resolution Digital Elevation Model (HRDEM) - CanElevation Series',
+                  'href': 'https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995'
+                  },
+             }
 
-# Write to yaml file, merge with provided config yaml if given
-with open(args.outfile, 'w') as outfile:
-    # insert auto-created resource entries into given config file if given
-    if args.infile is not None:
-        with open(args.infile, 'r') as infile:
-            data_in = yaml.load(infile, Loader=yaml.FullLoader)
-            for resource_entry in data['resources']:
-                data_in['resources'].update({resource_entry: data['resources'][resource_entry]})
-            data = data_in
+    args = parse_parameter()
 
-    yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
+    # Create collection for each datacube product that is not excluded
+    dc = OdcConnector()
+    data = {'resources': {}}
+    for dc_product in dc.list_products(with_pandas=False):
+        if dc_product['name'] in excluded_products:
+            continue
+        else:
+            data['resources'][dc_product['name']] = create_resource_from_odc_product(dc_product)
+
+    # Write to yaml file, merge with provided config yaml if given
+    with open(args.outfile, 'w') as outfile:
+        # insert auto-created resource entries into given config file if given
+        if args.infile is not None:
+            with open(args.infile, 'r') as infile:
+                data_in = yaml.load(infile, Loader=yaml.FullLoader)
+                for resource_entry in data['resources']:
+                    data_in['resources'].update({resource_entry: data['resources'][resource_entry]})
+                data = data_in
+
+        yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
 
