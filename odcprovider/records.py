@@ -24,6 +24,7 @@ from pygeoapi.provider.base import (BaseProvider,
 
 LOGGER = logging.getLogger(__name__)
 
+
 class OpenDataCubeRecordsProvider(BaseProvider):
     """
     OGC API Records provider for an OpenDataCube instance
@@ -97,7 +98,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         features = []
         for product in self.dc.list_products(with_pandas=False):
-            features.append(self._encodeAsRecord(product))
+            features.append(self._encode_as_record(product))
 
         # apply limit and start index
         all_count = len(features)
@@ -127,9 +128,9 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         """
         LOGGER.debug('Fetching identifier {}'.format(identifier))
 
-        return self._encodeDatasetTypeAsRecord(self.dc.get_product_by_id(identifier))
+        return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier))
 
-    def _encodeAsRecord(self, product):
+    def _encode_as_record(self, product):
         # product = self.dc.index.products.get_by_name(self.data)
         #
         # measurements = list(filter(lambda d: d['product'] in self.data,
@@ -143,19 +144,21 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         # }]
         return {
             'id': product.get('name'),
-            'properties': self._encodeRecordProperties(product)
+            'properties': self._encode_record_properties(product)
         }
 
-    def _encodeRecordProperties(self, product):
+    def _encode_record_properties(self, product):
         properties = {}
 
         for property in product.keys():
             properties.update({property: product.get(property)})
 
+        # properties derived via datacube.utils.documents.DocReader
+        # TODO verify properties.update(product.metadata.fields)
+
         return properties
 
-
-    def _encodeDatasetTypeAsRecord(self, product):
+    def _encode_dataset_type_as_record(self, product):
         return {
             'id': product.name,
             'type': 'Feature',
@@ -164,10 +167,10 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                 'coordinates': convert_datacube_bbox_to_geojson_wgs84_polygon(self.dc.bbox_of_product(product.name),
                                        'epsg:' + str(product.grid_spec.crs.to_epsg()))
             },
-            'properties': self._encodeDatasetTypeProperties(product)
+            'properties': self._encode_dataset_type_properties(product)
         }
 
-    def _encodeDatasetTypeProperties(self, product):
+    def _encode_dataset_type_properties(self, product):
         properties = {}
         # properties from metadata doc
         for metadata_key in product.metadata_doc.keys():
