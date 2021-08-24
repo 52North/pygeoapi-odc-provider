@@ -107,6 +107,13 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if all([not bands, not subsets, not bbox]):
             LOGGER.debug('No parameters specified')
 
+        if all([self._coverage_properties['x_axis_label'] not in subsets,
+                self._coverage_properties['y_axis_label'] not in subsets,
+                not bbox]):
+            msg = 'spatial subsetting via bbox parameter or subset is mandatory'
+            LOGGER.warning(msg)
+            raise ProviderQueryError(msg)
+
         if all([self._coverage_properties['x_axis_label'] in subsets,
                 self._coverage_properties['y_axis_label'] in subsets,
                 len(bbox) > 0]):
@@ -149,6 +156,29 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             maxx = subsets[x][1]
             miny = subsets[y][0]
             maxy = subsets[y][1]
+
+        if self.crs_obj.projected:
+            max_allowed_delta = 7500
+        else:
+            max_allowed_delta = 0.125
+
+        # TODO consider resolution in next development iteration
+
+        if minx > maxx or miny > maxy:
+            msg = 'spatial subsetting invalid min > max'
+            LOGGER.warning(msg)
+            raise ProviderQueryError(msg)
+
+        if maxx - minx > max_allowed_delta:
+            msg = 'spatial subsetting to large {}. please request max {}°'.format(maxx - minx, max_allowed_delta)
+            LOGGER.warning(msg)
+            raise ProviderQueryError(msg)
+
+        if maxy - miny > max_allowed_delta:
+            msg = 'spatial subsetting to large {}. please request max {}°'.format(maxy - miny, max_allowed_delta)
+            LOGGER.warning(msg)
+            raise ProviderQueryError(msg)
+
 
         # ------------------------------ #
         # Parameters for datacube.load() #
