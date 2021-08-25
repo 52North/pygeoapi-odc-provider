@@ -16,6 +16,7 @@ from datacube.utils.geometry import BoundingBox
 
 BBOX_COORD_PRECISION = "{:.4f}"
 
+
 def convert_datacube_bbox_to_wgs84(bbox: BoundingBox, in_crs: str = 'epsg:4326', always_xy: bool = True) -> BoundingBox:
     """
     Converts the given bbox coordinates from source to wgs84
