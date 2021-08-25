@@ -11,10 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
-from pyproj import Transformer
 from datacube.utils.geometry import BoundingBox
+from pyproj import Transformer
 
-BBOX_COORD_PRECISION = "{:.4f}"
+from .constants import BBOX_COORD_PRECISION
 
 
 def convert_datacube_bbox_to_wgs84(bbox: BoundingBox, in_crs: str = 'epsg:4326', always_xy: bool = True) -> BoundingBox:

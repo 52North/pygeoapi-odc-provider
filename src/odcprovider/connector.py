@@ -18,8 +18,8 @@ from datacube.model import DatasetType
 from datacube.utils.geometry import bbox_union, BoundingBox
 from pandas import DataFrame
 
+from .constants import DEFAULT_APP
 
-DEFAULT_APP = "pygeoapi_provider"
 
 class OdcConnector:
     """
