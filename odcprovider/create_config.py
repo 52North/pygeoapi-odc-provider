@@ -25,8 +25,9 @@ def parse_parameter() -> argparse.Namespace:
 
     # argument parser, takes two optional comment line arguments (input and output file name)
     # ToDo: is it better to use type=argparse.FileType('w') or type=argparse.FileType('r') instead of default str?
-    parser = argparse.ArgumentParser(description='Create resource entries for pygeoapi configuration. If infile is '
-                                                 'provided, resource entries will be inserted there and written to outfile.')
+    parser = argparse.ArgumentParser(
+        description='Create resource entries for pygeoapi configuration. If infile is '
+                    'provided, resource entries will be inserted there and written to outfile.')
     parser.add_argument('--infile', '-i',
                         help='File name of the config yaml that should be merged.')
     parser.add_argument('--outfile', '-o',
@@ -81,11 +82,13 @@ if __name__ == "__main__":
     excluded_products = ['minimal_example_eo', 'minimal_example_eo3']
 
     # list of links which are not available in datacube metadata
-    links = {'nrcan_dsm':
-                 {'title': 'High Resolution Digital Elevation Model (HRDEM) - CanElevation Series',
-                  'href': 'https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995'
-                  },
-             }
+    links = {
+        'nrcan_dsm':
+            {
+                'title': 'High Resolution Digital Elevation Model (HRDEM) - CanElevation Series',
+                'href': 'https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995'
+            },
+    }
 
     args = parse_parameter()
 
@@ -109,4 +112,3 @@ if __name__ == "__main__":
                 data = data_in
 
         yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
-
