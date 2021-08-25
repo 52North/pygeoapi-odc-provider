@@ -113,7 +113,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             'features': features
         }
 
-        if resulttype is 'hit limit':
+        if resulttype == 'hit limit':
             return len(features)
         else:
             return feature_collection
