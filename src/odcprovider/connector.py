@@ -11,50 +11,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
-import datacube
+from typing import Any
 
-from datacube.utils.geometry import bbox_union
+import datacube
+from datacube.model import DatasetType
+from datacube.utils.geometry import bbox_union, BoundingBox
+from pandas import DataFrame
+
 
 DEFAULT_APP = "pygeoapi_provider"
 
-
-class OdcConnector():
+class OdcConnector:
     """
     Collection of convenience functions to interact with an OpenDataCube instance
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.dc = None
 
-    def _ensure_init(self):
+    def _ensure_init(self) -> None:
         if self.dc is None:
-            self.dc = datacube.Datacube(app='pygeoapi_provider')
+            self.dc = datacube.Datacube(app=DEFAULT_APP)
 
-    def list_product_names(self):
+    def list_product_names(self) -> []:
         self._ensure_init()
         return [d['name'] for d in self.dc.list_products(with_pandas=False)]
 
-    def load(self, product, **params):
+    def load(self, product:str, **params) -> Any:
         self._ensure_init()
         return self.dc.load(product=product, **params)
 
-    def list_products(self, show_archived=False, with_pandas=True):
+    def list_products(self, show_archived:bool = False, with_pandas:bool = True) -> list:
         self._ensure_init()
         return self.dc.list_products(show_archived=show_archived, with_pandas=with_pandas)
 
-    def number_of_bands(self, product):
+    def number_of_bands(self, product:str) -> int:
         self._ensure_init()
         return len(self.dc.index.products.get_by_name(product).measurements)
 
-    def find_datasets(self, **search_terms):
+    def find_datasets(self, **search_terms) -> list:
         self._ensure_init()
         return self.dc.find_datasets(**search_terms)
 
-    def list_measurements(self, show_archived=False, with_pandas=True):
+    def list_measurements(self, show_archived:bool = False, with_pandas:bool = True) -> DataFrame:
         self._ensure_init()
         return self.dc.list_measurements(show_archived=show_archived, with_pandas=with_pandas)
 
-    def bbox_of_product(self, product):
+    def bbox_of_product(self, product:str) -> BoundingBox:
         """
         Get bounding box of a product
         :param product: product name
@@ -74,6 +77,6 @@ class OdcConnector():
 
         return bbox_union(bbs)
 
-    def get_product_by_id(self, identifier):
+    def get_product_by_id(self, identifier:str) -> DatasetType:
         self._ensure_init()
         return self.dc.index.products.get_by_name(name=identifier)
