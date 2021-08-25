@@ -15,8 +15,8 @@
 # =================================================================
 import yaml
 import argparse
-from .connector import OdcConnector
-from .utils import convert_datacube_bbox_to_wgs84
+from odcprovider.connector import OdcConnector
+from odcprovider.utils import convert_datacube_bbox_to_wgs84
 
 # datacube products to be exlcuded from pygeoapi
 EXCLUDED_PRODUCTS = ['minimal_example_eo', 'minimal_example_eo3', 'landsat8_c2_l2']

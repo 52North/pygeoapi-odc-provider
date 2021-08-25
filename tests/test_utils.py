@@ -11,10 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
-from odcprovider.utils import convert_datacube_bbox_to_wgs84
+from src.odcprovider.utils import convert_datacube_bbox_to_wgs84
 from datacube.utils.geometry import BoundingBox
 from pytest import approx
-from pyproj import CRS, Transformer
 
 
 def test_convert_datacube_bbox_to_wgs84():
