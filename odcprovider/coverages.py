@@ -11,13 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Based on pygeoapi's RasterioProvider (https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/rasterio_.py)
+# Based on pygeoapi's RasterioProvider
+# https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/rasterio_.py
 #
 # =================================================================
 
 import logging
 # TODO move to OdcConnector somehow
-from datacube.utils.geometry import CRS as CRS_dc
+from datacube.utils.geometry import CRS as CRS_DATACUBE
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
@@ -179,7 +180,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.warning(msg)
             raise ProviderQueryError(msg)
 
-
         # ------------------------------ #
         # Parameters for datacube.load() #
         # ------------------------------ #
@@ -255,7 +255,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
-                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))  # input is expected as (bands, rows, cols)
+                    # input is expected as (bands, rows, cols)
+                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))
 
                 LOGGER.debug('Returning data as GeoTIFF')
                 return memfile.read()
@@ -507,7 +508,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if crs_str is None or isnull(crs_str):
             self.crs_obj = crs_list[0]
         else:
-            self.crs_obj = CRS_dc(crs_str)
+            self.crs_obj = CRS_DATACUBE(crs_str)
 
         if resx is None:
             resx = resx_list[0]
