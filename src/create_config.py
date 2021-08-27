@@ -13,6 +13,11 @@
 #
 # Convenience script to create resource entries for each datacube product to be included in pygeoapi's config.yml
 # =================================================================
+import logging
+import os
+
+from pathlib import Path
+
 import yaml
 import argparse
 from odcprovider.connector import OdcConnector
@@ -20,14 +25,28 @@ from odcprovider.utils import convert_datacube_bbox_to_wgs84
 from datacube.utils.geometry import BoundingBox
 from datacube.model import DatasetType
 
-# datacube products to be exlcuded from pygeoapi
-EXCLUDED_PRODUCTS = ['minimal_example_eo', 'minimal_example_eo3', 'landsat8_c2_l2']
+logging_config_file = Path(Path(__file__).parent, 'logging.yaml')
+level = logging.DEBUG
+if os.path.exists(logging_config_file):
+    with open(logging_config_file, 'rt') as file:
+        try:
+            config = yaml.safe_load(file.read())
+            logging.config.dictConfig(config)
+        except Exception as e:
+            print(e)
+            print('Error while loading logging configuration from file "{}". Using defaults'
+                  .format(logging_config_file))
+            logging.basicConfig(level=level)
+else:
+    print('Logging file configuration does not exist: "{}". Using defaults.'.format(logging_config_file))
+    logging.basicConfig(level=level)
 
-# ToDo: improve formatting
+LOGGER = logging.getLogger(__name__)
+
+# ToDo: improve formatting of created config.yaml
+
 
 def parse_parameter() -> argparse.Namespace:
-    # argument parser, takes two optional comment line arguments (input and output file name)
-    # ToDo: is it better to use type=argparse.FileType('w') or type=argparse.FileType('r') instead of default str?
     parser = argparse.ArgumentParser(
         description='Create resource entries for pygeoapi configuration. If infile is '
                     'provided, resource entries will be inserted there and written to outfile.')
@@ -36,7 +55,23 @@ def parse_parameter() -> argparse.Namespace:
     parser.add_argument('--outfile', '-o',
                         default='config_auto.yml',
                         help='Output yaml file name (default: config_auto.yml)')
-    return parser.parse_args()
+    parser.add_argument('--exclude-products',
+                        help='Comma separated list of product names to exclude')
+    args = parser.parse_args()
+
+    if args.exclude_products:
+        args.exclude_products = [s.strip() for s in args.exclude_products.split(",")]
+
+    LOGGER.info("""
+Starting creating pygeoapi config
+=================================
+- empty values are allowed
+
+infile            : {}
+outfile           : {}
+excluded products : {}""".format(args.infile, args.outfile, args.exclude_products))
+
+    return args
 
 
 def _create_resource_from_odc_product(product:DatasetType, bbox:BoundingBox) -> dict:
@@ -113,7 +148,7 @@ def main():
     data = {'resources': {}}
 
     for dc_product_name in dc.list_product_names():
-        if dc_product_name not in EXCLUDED_PRODUCTS:
+        if dc_product_name not in args.excluded_products:
             dc_product = dc.get_product_by_id(dc_product_name)
             # Make sure bbox is in WGS84
             if len(dc.get_crs_set()) == 1:
