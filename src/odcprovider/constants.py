@@ -19,5 +19,5 @@ Used for datacube object initialization to trigger datacube.conf find feature
 
 BBOX_COORD_PRECISION = "{:.4f}"
 """
-Format string for BoundBox coordiniates. Limits float output to four decimal places
+Format string for BoundBox coordinates. Limits float output to four decimal places
 """

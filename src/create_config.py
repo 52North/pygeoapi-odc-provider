@@ -74,7 +74,7 @@ exclude products  : {}""".format(args.infile, args.outfile, args.exclude_product
     return args
 
 
-def _create_resource_from_odc_product(product:DatasetType, bbox:BoundingBox) -> dict:
+def _create_resource_from_odc_product(product: DatasetType, bbox: BoundingBox) -> dict:
     """
     Create resource from Open Data CUbe product
 
@@ -152,12 +152,13 @@ def main():
         if dc_product_name not in args.exclude_products:
             dc_product = dc.get_product_by_id(dc_product_name)
             # Make sure bbox is in WGS84
-            if len(dc.get_crs_set()) == 1:
-                bbox = convert_datacube_bbox_to_wgs84(dc.bbox_of_product(dc_product.name), str(dc.get_crs_set().pop()))
+            if len(dc.get_crs_set(dc_product.name)) == 1:
+                bbox = convert_datacube_bbox_to_wgs84(dc.bbox_of_product(dc_product.name),
+                                                      str(dc.get_crs_set(dc_product.name).pop()))
             else:
                 bbox = dc.bbox_of_product(dc_product.name)
 
-            data['resources'][dc_product_name] = _create_resource_from_odc_product(dc_product, bbox)
+            data['resources'][dc_product.name] = _create_resource_from_odc_product(dc_product, bbox)
 
     # Write to yaml file, merge with provided config yaml if given
     with open(args.outfile, 'w') as outfile:

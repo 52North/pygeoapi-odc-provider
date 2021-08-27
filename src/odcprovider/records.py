@@ -17,10 +17,7 @@ import logging
 from .connector import OdcConnector
 from .utils import convert_datacube_bbox_to_geojson_wgs84_polygon
 from pygeoapi.provider.base import (BaseProvider,
-                                    ProviderGenericError,
-                                    ProviderConnectionError,
-                                    ProviderQueryError,
-                                    ProviderItemNotFoundError)
+                                    ProviderQueryError)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -165,7 +162,8 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             'geometry': {
                 'type': 'Polygon',
                 'coordinates': convert_datacube_bbox_to_geojson_wgs84_polygon(self.dc.bbox_of_product(product.name),
-                                       'epsg:' + str(product.grid_spec.crs.to_epsg()))
+                                                                              'epsg:' + str(
+                                                                                  product.grid_spec.crs.to_epsg()))
             },
             'properties': self._encode_dataset_type_properties(product)
         }

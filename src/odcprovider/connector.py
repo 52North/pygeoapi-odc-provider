@@ -41,15 +41,15 @@ class OdcConnector:
         self._ensure_init()
         return [d['name'] for d in self.dc.list_products(with_pandas=False)]
 
-    def load(self, product:str, **params) -> Any:
+    def load(self, product: str, **params) -> Any:
         self._ensure_init()
         return self.dc.load(product=product, **params)
 
-    def list_products(self, show_archived:bool = False, with_pandas:bool = True) -> list:
+    def list_products(self, show_archived: bool = False, with_pandas: bool = True) -> list:
         self._ensure_init()
         return self.dc.list_products(show_archived=show_archived, with_pandas=with_pandas)
 
-    def number_of_bands(self, product:str) -> int:
+    def number_of_bands(self, product: str) -> int:
         self._ensure_init()
         return len(self.dc.index.products.get_by_name(product).measurements)
 
@@ -57,11 +57,11 @@ class OdcConnector:
         self._ensure_init()
         return self.dc.find_datasets(**search_terms)
 
-    def list_measurements(self, show_archived:bool = False, with_pandas:bool = True) -> DataFrame:
+    def list_measurements(self, show_archived: bool = False, with_pandas: bool = True) -> DataFrame:
         self._ensure_init()
         return self.dc.list_measurements(show_archived=show_archived, with_pandas=with_pandas)
 
-    def bbox_of_product(self, product:str) -> BoundingBox:
+    def bbox_of_product(self, product: str) -> BoundingBox:
         """
         Get bounding box of a product
         :param product: product name
@@ -72,7 +72,7 @@ class OdcConnector:
             raise ValueError("product MUST not be None")
         if len(product) == 0:
             raise ValueError("product MUST not be an empty string")
-        if not product in self.list_product_names():
+        if product not in self.list_product_names():
             raise ValueError("product MUST be in datacube")
 
         crs_set = self.get_crs_set(product=product)
@@ -91,13 +91,12 @@ class OdcConnector:
 
         return bbox_union(bbs)
 
-    def get_product_by_id(self, identifier:str) -> DatasetType:
+    def get_product_by_id(self, identifier: str) -> DatasetType:
         self._ensure_init()
         return self.dc.index.products.get_by_name(name=identifier)
 
-    def get_crs_set(self, product:str) -> set:
-        crs_set= set()
+    def get_crs_set(self, product: str) -> set:
+        crs_set = set()
         for dataset in self.dc.find_datasets(product=product):
             crs_set.add(dataset.crs)
         return crs_set
-

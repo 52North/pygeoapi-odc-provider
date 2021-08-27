@@ -37,7 +37,7 @@ def convert_datacube_bbox_to_wgs84(bbox: BoundingBox, in_crs: str = 'epsg:4326',
     return BoundingBox.from_points((left_wgs84, bottom_wgs84), (right_wgs84, top_wgs84))
 
 
-def convert_datacube_bbox_to_geojson_wgs84_polygon(bbox: BoundingBox, in_crs: str ='epsg:4326', always_xy: bool = True) -> [[[]]]:
+def convert_datacube_bbox_to_geojson_wgs84_polygon(bbox: BoundingBox, in_crs: str = 'epsg:4326', always_xy: bool = True) -> [[[]]]:
     """
     Converts the given bbox coordinates from source to wgs84
     :param bbox: datacube.utils.geometry._base.BoundingBox
