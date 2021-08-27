@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
+import logging
 from typing import Any
 
 import datacube
@@ -19,6 +20,9 @@ from datacube.utils.geometry import bbox_union, BoundingBox
 from pandas import DataFrame
 
 from .constants import DEFAULT_APP
+from .utils import convert_datacube_bbox_to_wgs84
+
+LOGGER = logging.getLogger(__name__)
 
 
 class OdcConnector:
@@ -71,12 +75,29 @@ class OdcConnector:
         if not product in self.list_product_names():
             raise ValueError("product MUST be in datacube")
 
+        crs_set = self.get_crs_set(product=product)
+        if len(crs_set) > 1:
+            LOGGER.info('product {} has datasets with varying crs:'.format(product))
+            for crs in crs_set:
+                LOGGER.info('- {}'.format(str(crs)))
+            LOGGER.info('reproject to WGS84.')
+
         bbs = []
         for dataset in self.find_datasets(product=product):
-            bbs.append(dataset.bounds)
+            if len(crs_set) == 1:
+                bbs.append(dataset.bounds)
+            else:
+                bbs.append(convert_datacube_bbox_to_wgs84(dataset.bounds, str(dataset.crs)))
 
         return bbox_union(bbs)
 
     def get_product_by_id(self, identifier:str) -> DatasetType:
         self._ensure_init()
         return self.dc.index.products.get_by_name(name=identifier)
+
+    def get_crs_set(self, product:str) -> set:
+        crs_set= set()
+        for dataset in self.dc.find_datasets(product=product):
+            crs_set.add(dataset.crs)
+        return crs_set
+

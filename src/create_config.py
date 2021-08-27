@@ -47,26 +47,25 @@ def parse_parameter() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _create_resource_from_odc_product(dc, product):
+def _create_resource_from_odc_product(product, bbox):
     """
     Create resource from Open Data CUbe product
 
-    :param dc: ODC connector
-    :param product: ODC product
+    :param product: ODC product, datacube.model.DatasetType
+    :param bbox: bbox in WGS84!!!
     :return: dict
     """
 
-    # ToDo: what if products do not have crs?
-    left, bottom, right, top = convert_datacube_bbox_to_wgs84(dc.bbox_of_product(product['name']), product['crs'])
-    if product['format'] is not None:
-        format_name = product['format']
+    left, bottom, right, top = bbox
+    if product.fields['format'] is not None:
+        format_name = product.fields['format']
     else:
         format_name = 'NetCDF'
 
     resource_dict = {
         'type': 'collection',
-        'title': product['name'],
-        'description': product['description'],
+        'title': product.name,
+        'description': product.definition['description'],
         'keywords': ['dsm', 'Canada', 'MB', 'The Pas 2014'],  # ToDo: generalize
         'links': [{
             'type': 'text/html',
@@ -84,7 +83,7 @@ def _create_resource_from_odc_product(dc, product):
         'providers': [{
             'type': 'coverage',
             'name': 'odcprovider.OpenDataCubeCoveragesProvider',
-            'data': product['name'],
+            'data': product.name,
             'format': {
                 'name': format_name,
                 'mimetype': 'application/{}'.format(format_name.lower())
@@ -98,9 +97,9 @@ def _create_resource_from_odc_product(dc, product):
 def _merge_config(infile, data):
     """
     Insert auto-created resource entries into given config file if given
-    :param infile:
-    :param data:
-    :return:
+    :param infile: file name of a pygeoapi yml config file
+    :param data: dict of resource entries
+    :return: merged dict of resource entries
     """
     with open(infile, 'r') as infile:
         data_in = yaml.load(infile, Loader=yaml.FullLoader)
@@ -116,9 +115,17 @@ def main():
     # Create collection for each datacube product that is not excluded
     dc = OdcConnector()
     data = {'resources': {}}
-    for dc_product in dc.list_products(with_pandas=False):
-        if dc_product['name'] not in EXCLUDED_PRODUCTS:
-            data['resources'][dc_product['name']] = _create_resource_from_odc_product(dc, dc_product)
+
+    for dc_product_name in dc.list_product_names():
+        if dc_product_name not in EXCLUDED_PRODUCTS:
+            dc_product = dc.get_product_by_id(dc_product_name)
+            # Make sure bbox is in WGS84
+            if len(dc.get_crs_set()) == 1:
+                bbox = convert_datacube_bbox_to_wgs84(dc.bbox_of_product(dc_product.name), str(dc.get_crs_set().pop()))
+            else:
+                bbox = dc.bbox_of_product(dc_product.name)
+
+            data['resources'][dc_product_name] = _create_resource_from_odc_product(dc_product, bbox)
 
     # Write to yaml file, merge with provided config yaml if given
     with open(args.outfile, 'w') as outfile:
