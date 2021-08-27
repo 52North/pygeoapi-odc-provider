@@ -69,7 +69,7 @@ Starting creating pygeoapi config
 
 infile            : {}
 outfile           : {}
-excluded products : {}""".format(args.infile, args.outfile, args.exclude_products))
+exclude products  : {}""".format(args.infile, args.outfile, args.exclude_products))
 
     return args
 
@@ -149,7 +149,7 @@ def main():
     data = {'resources': {}}
 
     for dc_product_name in dc.list_product_names():
-        if dc_product_name not in args.excluded_products:
+        if dc_product_name not in args.exclude_products:
             dc_product = dc.get_product_by_id(dc_product_name)
             # Make sure bbox is in WGS84
             if len(dc.get_crs_set()) == 1:
