@@ -1,7 +1,7 @@
-__pycache__/
-dist
-build
 *.egg-info/
+.git-commit-msg-template
 .idea
+__pycache__/
+build
 datacube.conf
-request.json
+dist
