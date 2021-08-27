@@ -90,3 +90,17 @@ def test__create_resource_from_odc_product():
     assert created_resource['links'][0]['title'] == 'High Resolution Digital Elevation Model (HRDEM) - CanElevation Series'
     assert created_resource['links'][0]['href'] == 'https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995'
     assert created_resource['links'][0]['hreflang'] == 'en-CA'
+
+
+def test__create_resource_from_odc_product_without_links():
+    product = pickle.load(open('./data/product_without-keywords-and-links.pickle', 'rb'))
+    bbox = datacube.utils.geometry.BoundingBox.from_points([1.0, 2.0], [3.0, 4.0])
+    created_resource = _create_resource_from_odc_product(product, bbox)
+    assert len(created_resource['links']) == 0
+
+
+def test__create_resource_from_odc_product_without_keywords():
+    product = pickle.load(open('./data/product_without-keywords-and-links.pickle', 'rb'))
+    bbox = datacube.utils.geometry.BoundingBox.from_points([1.0, 2.0], [3.0, 4.0])
+    created_resource = _create_resource_from_odc_product(product, bbox)
+    assert len(created_resource['keywords']) == 0

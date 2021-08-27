@@ -90,20 +90,21 @@ def _create_resource_from_odc_product(product:DatasetType, bbox:BoundingBox) -> 
         format_name = 'NetCDF'
 
     links = []
-    for link in product.metadata_doc.get('links'):
-        links.append({
-            'type': link.get('type'),
-            'rel': link.get('rel'),
-            'title': link.get('title'),
-            'href': link.get('href'),
-            'hreflang': link.get('hreflang')
-        })
+    if 'links' in product.metadata_doc.keys():
+        for link in product.metadata_doc.get('links'):
+            links.append({
+                'type': link.get('type'),
+                'rel': link.get('rel'),
+                'title': link.get('title'),
+                'href': link.get('href'),
+                'hreflang': link.get('hreflang')
+            })
 
     resource_dict = {
         'type': 'collection',
         'title': product.name,
         'description': product.definition['description'],
-        'keywords': product.metadata_doc.get('keywords'),
+        'keywords': product.metadata_doc.get('keywords') if 'keywords' in product.metadata_doc.keys() else [],
         'links': links,
         'extents': {
             'spatial': {
