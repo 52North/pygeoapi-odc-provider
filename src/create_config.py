@@ -17,19 +17,11 @@ import yaml
 import argparse
 from odcprovider.connector import OdcConnector
 from odcprovider.utils import convert_datacube_bbox_to_wgs84
+from datacube.utils.geometry import BoundingBox
+from datacube.model import DatasetType
 
 # datacube products to be exlcuded from pygeoapi
 EXCLUDED_PRODUCTS = ['minimal_example_eo', 'minimal_example_eo3', 'landsat8_c2_l2']
-
-# list of links which are not available in datacube metadata
-LINKS = {
-    'nrcan_dsm':
-        {
-            'title': 'High Resolution Digital Elevation Model (HRDEM) - CanElevation Series',
-            'href': 'https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995'
-        },
-}
-
 
 # ToDo: improve formatting
 
@@ -47,7 +39,7 @@ def parse_parameter() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _create_resource_from_odc_product(product, bbox):
+def _create_resource_from_odc_product(product:DatasetType, bbox:BoundingBox) -> dict:
     """
     Create resource from Open Data CUbe product
 
@@ -62,18 +54,22 @@ def _create_resource_from_odc_product(product, bbox):
     else:
         format_name = 'NetCDF'
 
+    links = []
+    for link in product.metadata_doc.get('links'):
+        links.append({
+            'type': link.get('type'),
+            'rel': link.get('rel'),
+            'title': link.get('title'),
+            'href': link.get('href'),
+            'hreflang': link.get('hreflang')
+        })
+
     resource_dict = {
         'type': 'collection',
         'title': product.name,
         'description': product.definition['description'],
-        'keywords': ['dsm', 'Canada', 'MB', 'The Pas 2014'],  # ToDo: generalize
-        'links': [{
-            'type': 'text/html',
-            'rel': 'canonical',
-            'title': LINKS['nrcan_dsm']['title'],  # ToDo: generalize
-            'href': LINKS['nrcan_dsm']['href'],  # ToDo: generalize
-            'hreflang': 'en-US'
-        }],
+        'keywords': product.metadata_doc.get('keywords'),
+        'links': links,
         'extents': {
             'spatial': {
                 'bbox': [left, bottom, right, top],
