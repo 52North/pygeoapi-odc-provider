@@ -18,7 +18,7 @@
 
 import logging
 # TODO move to OdcConnector somehow
-from datacube.utils.geometry import CRS as CRS_DATACUBE
+from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
@@ -57,16 +57,20 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance"
                                        .format(self.data))
 
+        LOGGER.debug('Start initializing product {}'.format(self.data))
+
         try:
-            # datacube.utils.geometry.CRS
-            self.crs_obj = None
-            self._coverage_properties = self._get_coverage_properties()
+            self.crs_obj = None  # datacube.utils.geometry.CRS
+            bbox = self._get_bbox()  # datacube.utils.geometry.BoundingBox
+            self._coverage_properties = self._get_coverage_properties(bbox)
             self._measurement_properties = self._get_measurement_properties()
-            self.crs = self._coverage_properties['crs_uri']
+            self.native_format = provider_def['format']['name']
+            # axes, crs and num_bands is need for coverage providers (see https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/base.py#L65)
             self.axes = self._coverage_properties['axes']
+            self.crs = self._coverage_properties['crs_uri']
             self.num_bands = self._coverage_properties['num_bands']
             self.fields = [str(num) for num in range(1, self.num_bands + 1)]
-            self.native_format = provider_def['format']['name']
+            LOGGER.debug('Finished initializing product {}'.format(self.data))
         except Exception as err:
             LOGGER.warning(err)
             raise ProviderConnectionError(err)
@@ -434,7 +438,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         return rangetype
 
-    def _get_coverage_properties(self):
+    def _get_bbox(self) -> BoundingBox:
+        bbox = self.dc.bbox_of_product(self.data)
+        LOGGER.debug('bbox of product {}: {}'.format(self.data, bbox))
+        return bbox
+
+    def _get_coverage_properties(self, bbox):
         """
         Helper function to normalize coverage properties
         :returns: `dict` of coverage properties
@@ -501,8 +510,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if len(set(tuple(i) for i in transform_list)) > 1:
             LOGGER.warning("Product {} has datasets with different transforms.".format(self.data))
 
-        bounds = self.dc.bbox_of_product(self.data)
-
         # Use dataset metadata if metadata was not specified on product level
         # ToDO: support different crs/resolution for different datasets including reprojection
         if crs_str is None or isnull(crs_str):
@@ -527,18 +534,18 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # -------------- #
         properties = {
             'bbox': [
-                bounds.left,
-                bounds.bottom,
-                bounds.right,
-                bounds.top
+                bbox.left,
+                bbox.bottom,
+                bbox.right,
+                bbox.top
             ],
             'crs_uri': 'http://www.opengis.net/def/crs/OGC/1.3/CRS84',
             'crs_type': 'GeographicCRS',
             'bbox_units': 'deg',
             'x_axis_label': 'Lon',
             'y_axis_label': 'Lat',
-            'width': abs((bounds.right - bounds.left) / resx),
-            'height': abs((bounds.top - bounds.bottom) / resy),
+            'width': abs((bbox.right - bbox.left) / resx),
+            'height': abs((bbox.top - bbox.bottom) / resy),
             'resx': resx,
             'resy': resy,
             'transform': transform,
