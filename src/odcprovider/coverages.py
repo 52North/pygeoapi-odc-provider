@@ -17,7 +17,7 @@
 # =================================================================
 
 import logging
-# TODO move to OdcConnector somehow
+# ToDo move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
@@ -167,7 +167,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         else:
             max_allowed_delta = 0.125
 
-        # TODO consider resolution in next development iteration
+        # ToDo consider resolution in next development iteration
 
         if minx > maxx or miny > maxy:
             msg = 'spatial subsetting invalid min > max'
@@ -466,7 +466,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         res = product_metadata.iloc[0]['resolution']
         if isinstance(res, tuple):
-            # ToDO: check coordinate order!
+            # ToDo: check coordinate order!
             resx = res[1]
             resy = res[0]
         else:
@@ -477,7 +477,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         # spatial_dimensions = product_metadata.iloc[0]['spatial_dimensions']
         # if isinstance(spatial_dimensions, tuple):
-        #     # ToDO: check axis order!
+        #     # ToDo: check axis order!
         #     dim_we = spatial_dimensions[1]
         #     dim_ns = spatial_dimensions[0]
         # else:
@@ -494,6 +494,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         resy_list = []
         transform_list = []
         dim_list = []
+        # ToDo can we replace this for-loop by using OdcConnector.bbox_of_product()?
         for dataset in self.dc.find_datasets(product=self.data):
             crs_list.append(dataset.crs)
             # ToDo: check coordinate order!
@@ -511,7 +512,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.warning("Product {} has datasets with different transforms.".format(self.data))
 
         # Use dataset metadata if metadata was not specified on product level
-        # ToDO: support different crs/resolution for different datasets including reprojection
+        # ToDo: support different crs/resolution for different datasets including reprojection
         if crs_str is None or isnull(crs_str):
             self.crs_obj = crs_list[0]
         else:

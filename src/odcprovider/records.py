@@ -84,8 +84,8 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         # 'resolution': (-1.0, 1.0)
         # }
         #
-        # TODO woher den Spatial Extend des Products?
-        # TODO datasets oder measurements auflisten? tendiere zu measurements
+        # ToDo woher den Spatial Extend des Products?
+        # ToDo datasets oder measurements auflisten? tendiere zu measurements
 
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
@@ -151,7 +151,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             properties.update({property: product.get(property)})
 
         # properties derived via datacube.utils.documents.DocReader
-        # TODO verify properties.update(product.metadata.fields)
+        # ToDo verify properties.update(product.metadata.fields)
 
         return properties
 
