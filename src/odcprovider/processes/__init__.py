@@ -15,5 +15,4 @@
 """
 Collection of Processes to be executed "on" an OpenDataCube instance
 """
-from .contour_lines import ContourLinesProcessor
 from .hello_world import HelloWorldProcessor
