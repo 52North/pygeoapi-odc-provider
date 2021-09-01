@@ -94,6 +94,17 @@ The script can optionally take an input file. The automatically generated resour
 * **0.2.0**: add first processors
 * **0.0.1**: WIP coverages provider
 
+## Tests and Coverage
+
+1. Install coverage: `pip install coverage`
+
+2. Perform analysis: `./tests$ coverage run --branch --source ../src/ -m pytest`
+
+3. Render HTML report: `./tests$ coverage html`
+
+4. Open browser with `file:///path-to-repo/tests/htmlcov/index.html` and enable javascript.
+
+
 ## ToDos
 
 * [ ] Clarify License: MIT vs GPLv2 vs Apache 2.0 for service libs @52N

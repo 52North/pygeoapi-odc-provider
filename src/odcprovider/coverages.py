@@ -461,8 +461,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # self.dc.index.products.get_by_name(self.product_name).default_crs
         # https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.model.DatasetType.html#datacube.model.DatasetType
 
-        product_list = self.dc.list_products()
-        product_metadata = product_list[product_list['name'] == self.data]
+        product_metadata = self.dc.get_product_by_id(self.data)
 
         res = product_metadata.iloc[0]['resolution']
         if isinstance(res, tuple):
@@ -495,7 +494,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         transform_list = []
         dim_list = []
         # ToDo can we replace this for-loop by using OdcConnector.bbox_of_product()?
-        for dataset in self.dc.find_datasets(product=self.data):
+        for dataset in self.dc.get_datasets_for_product(self.data):
             crs_list.append(dataset.crs)
             # ToDo: check coordinate order!
             resx_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][0])
