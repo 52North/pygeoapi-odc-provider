@@ -17,6 +17,7 @@
 # =================================================================
 
 import logging
+import json
 # ToDo move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
 from pandas import isnull
@@ -443,7 +444,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         LOGGER.debug('bbox of product {}: {}'.format(self.data, bbox))
         return bbox
 
-    def _get_coverage_properties(self, bbox):
+    def _get_coverage_properties(self, bbox: BoundingBox) -> dict:
         """
         Helper function to normalize coverage properties
         :returns: `dict` of coverage properties
@@ -464,8 +465,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         product_metadata = self.dc.get_product_by_id(self.data)
 
         LOGGER.debug("self.data: '{}'".format(self.data))
+        LOGGER.debug("product_metadata:\n{}\n".format(str(product_metadata)))
+        LOGGER.debug("product_metadata:\n{}\n"
+                     .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
 
-        res = product_metadata.grid_spec.resolution
+        res = product_metadata.storage.resolution
         if isinstance(res, tuple):
             # ToDo: check coordinate order!
             resx = res[1]
@@ -556,7 +560,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         }
 
         if self.crs_obj.projected:
-            properties['crs_uri'] = '{}/{}'.format('http://www.opengis.net/def/crs/EPSG/9.8.15', self.crs_obj.to_epsg())
+            properties['crs_uri'] = 'http://www.opengis.net/def/crs/EPSG/9.8.15/{}'.format(self.crs_obj.to_epsg())
             properties['x_axis_label'] = 'x'
             properties['y_axis_label'] = 'y'
             properties['bbox_units'] = self.crs_obj.units[0]
