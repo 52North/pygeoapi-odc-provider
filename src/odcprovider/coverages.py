@@ -464,10 +464,10 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         product_metadata = self.dc.get_product_by_id(self.data)
 
-        LOGGER.info("self.data: '{}'".format(self.data))
-        LOGGER.info("product_metadata:\n{}\n".format(str(product_metadata)))
-        LOGGER.info("product_metadata:\n{}\n"
-                     .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
+        print("self.data: '{}'".format(self.data))
+        print("product_metadata:\n{}\n".format(str(product_metadata)))
+        print("product_metadata:\n{}\n"
+              .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
 
         res = product_metadata.storage.resolution
         if isinstance(res, tuple):
