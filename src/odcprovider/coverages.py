@@ -463,6 +463,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         product_metadata = self.dc.get_product_by_id(self.data)
 
+        LOGGER.debug("self.data: '{}'".format(self.data))
+
         res = product_metadata.grid_spec.resolution
         if isinstance(res, tuple):
             # ToDo: check coordinate order!
