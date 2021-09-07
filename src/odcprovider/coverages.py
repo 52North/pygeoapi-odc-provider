@@ -463,7 +463,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         product_metadata = self.dc.get_product_by_id(self.data)
 
-        res = product_metadata.iloc[0]['resolution']
+        res = product_metadata.grid_spec.resolution
         if isinstance(res, tuple):
             # ToDo: check coordinate order!
             resx = res[1]
@@ -472,7 +472,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             resx = None
             resy = None
 
-        crs_str = product_metadata.iloc[0]['crs']
+        crs_str = str(product_metadata.grid_spec.crs)
 
         # spatial_dimensions = product_metadata.iloc[0]['spatial_dimensions']
         # if isinstance(spatial_dimensions, tuple):
