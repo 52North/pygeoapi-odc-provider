@@ -467,9 +467,10 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         LOGGER.info("self.data: '{}'".format(self.data))
         LOGGER.info("product_metadata:\n{}\n".format(str(product_metadata)))
         LOGGER.info("product_metadata:\n{}\n"
-                     .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
+                    .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
+
         if 'storage' not in product_metadata.definition.keys():
-            raise RuntimeError("Could not retrieve storage information from product")
+            raise RuntimeError("Could not retrieve storage information from product '{}'".format(self.data))
         if 'resolution' not in product_metadata.definition.get('storage').keys():
             raise RuntimeError("Could not find required resolution information")
 
