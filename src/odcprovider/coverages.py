@@ -467,32 +467,27 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if product_metadata is None:
             raise RuntimeError("Could not retrieve product '{}'".format(self.data))
 
-        LOGGER.info("self.data: '{}'".format(self.data))
-        LOGGER.info("product_metadata:\n{}\n".format(str(product_metadata)))
-        LOGGER.info("product_metadata:\n{}\n"
-                    .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
+        res = None
+        crs_str = None
 
-        if 'storage' not in product_metadata.definition.keys():
-            raise RuntimeError("Could not retrieve storage information from product '{}'".format(self.data))
-        if 'resolution' not in product_metadata.definition.get('storage').keys():
-            raise RuntimeError("Could not find required resolution information")
+        if 'storage' in product_metadata.definition.keys() and \
+                'resolution' in product_metadata.definition.get('storage').keys():
+            res = product_metadata.definition.get('storage').get('resolution')
 
-        res = product_metadata.definition.get('storage').get('resolution')
-        if isinstance(res, tuple):
-            # ToDo: check coordinate order!
-            resx = res[1]
-            resy = res[0]
-        elif isinstance(res, dict) and 'x' in res.keys() and 'y' in res.keys():
-            resx = res.get('x')
-            resy = res.get('y')
+            if 'crs' in product_metadata.definition.get('storage').keys():
+                crs_str = str(product_metadata.definition.get('storage').get('crs'))
+
+        if res is not None:
+            if isinstance(res, tuple):
+                # ToDo: check coordinate order!
+                resx = res[1]
+                resy = res[0]
+            elif isinstance(res, dict) and 'x' in res.keys() and 'y' in res.keys():
+                resx = res.get('x')
+                resy = res.get('y')
         else:
             resx = None
             resy = None
-
-        if 'crs' not in product_metadata.definition.get('storage').keys():
-            raise RuntimeError("Could not find required CRS information")
-
-        crs_str = str(product_metadata.definition.get('storage').get('crs'))
 
         # spatial_dimensions = product_metadata.iloc[0]['spatial_dimensions']
         # if isinstance(spatial_dimensions, tuple):
@@ -517,9 +512,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         for dataset in self.dc.get_datasets_for_product(self.data):
             crs_list.append(dataset.crs)
             # ToDo: check coordinate order!
-            resx_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][0])
-            resy_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][4])
-            transform_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'])
+            resx_list.append(dataset.metadata_doc['grids']['default']['transform'][0])
+            resy_list.append(dataset.metadata_doc['grids']['default']['transform'][4])
+            transform_list.append(dataset.metadata_doc['grids']['default']['transform'])
             dim_list.append(dataset.crs.dimensions)
 
         # Check if all datasets have the same crs, resolution and transform
