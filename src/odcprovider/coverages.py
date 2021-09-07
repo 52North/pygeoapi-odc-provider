@@ -58,7 +58,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance"
                                        .format(self.data))
 
-        LOGGER.debug('Start initializing product {}'.format(self.data))
+        LOGGER.info('Start initializing product {}'.format(self.data))
 
         try:
             self.crs_obj = None  # datacube.utils.geometry.CRS
@@ -71,7 +71,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             self.crs = self._coverage_properties['crs_uri']
             self.num_bands = self._coverage_properties['num_bands']
             self.fields = [str(num) for num in range(1, self.num_bands + 1)]
-            LOGGER.debug('Finished initializing product {}'.format(self.data))
+            LOGGER.info('Finished initializing product {}'.format(self.data))
         except Exception as err:
             LOGGER.warning(err)
             raise ProviderConnectionError(err)
@@ -105,13 +105,13 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ---------------- #
 
         bands = range_subset
-        LOGGER.debug('Bands: {}, subsets: {}'.format(bands, subsets))
+        LOGGER.info('Bands: {}, subsets: {}'.format(bands, subsets))
 
         # initial bbox, full extent of collection
         minx, miny, maxx, maxy = self._coverage_properties['bbox']
 
         if all([not bands, not subsets, not bbox]):
-            LOGGER.debug('No parameters specified')
+            LOGGER.info('No parameters specified')
 
         if all([self._coverage_properties['x_axis_label'] not in subsets,
                 self._coverage_properties['y_axis_label'] not in subsets,
@@ -137,23 +137,23 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
 
             if crs_src == crs_dest:
-                LOGGER.debug('source bbox CRS and data CRS are the same')
+                LOGGER.info('source bbox CRS and data CRS are the same')
             else:
-                LOGGER.debug('source bbox CRS and data CRS are different')
-                LOGGER.debug('reprojecting bbox into native coordinates')
+                LOGGER.info('source bbox CRS and data CRS are different')
+                LOGGER.info('reprojecting bbox into native coordinates')
 
                 t = Transformer.from_crs(crs_src, crs_dest, always_xy=True)
                 minx, miny = t.transform(minxbox, minybox)
                 maxx, maxy = t.transform(maxxbox, maxybox)
 
-                LOGGER.debug('Source coordinates: {}'.format(
+                LOGGER.info('Source coordinates: {}'.format(
                     [minxbox, minybox, maxxbox, maxybox]))
-                LOGGER.debug('Destination coordinates: {}'.format(
+                LOGGER.info('Destination coordinates: {}'.format(
                     [minx, miny, maxx, maxy]))
 
         elif (self._coverage_properties['x_axis_label'] in subsets and
                 self._coverage_properties['y_axis_label'] in subsets):
-            LOGGER.debug('Creating spatial subset')
+            LOGGER.info('Creating spatial subset')
 
             x = self._coverage_properties['x_axis_label']
             y = self._coverage_properties['y_axis_label']
@@ -235,12 +235,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                     'bands': bands}
 
         if self.options is not None:
-            LOGGER.debug('Adding dataset options')
+            LOGGER.info('Adding dataset options')
             for key, value in self.options.items():
                 out_meta[key] = value
 
         if format_ == 'json':
-            LOGGER.debug('Creating output in CoverageJSON')
+            LOGGER.info('Creating output in CoverageJSON')
             return self.gen_covjson(out_meta, dataset)
 
         elif format_.lower() == 'geotiff':
@@ -263,11 +263,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                     # input is expected as (bands, rows, cols)
                     dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))
 
-                LOGGER.debug('Returning data as GeoTIFF')
+                LOGGER.info('Returning data as GeoTIFF')
                 return memfile.read()
 
         else:
-            LOGGER.debug('Returning data as netCDF')
+            LOGGER.info('Returning data as netCDF')
             # Note: "If no path is provided, this function returns the resulting netCDF file as bytes; in this case,
             # we need to use scipy, which does not support netCDF version 4 (the default format becomes NETCDF3_64BIT)."
             # (http://xarray.pydata.org/en/stable/generated/xarray.Dataset.to_netcdf.html)
@@ -283,7 +283,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         # ToDo: support time dimension
 
-        LOGGER.debug('Creating CoverageJSON domain')
+        LOGGER.info('Creating CoverageJSON domain')
         minx, miny, maxx, maxy = metadata['bbox']
 
         cj = {
@@ -317,7 +317,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         bands_select = metadata['bands']
 
-        LOGGER.debug('bands selected: {}'.format(bands_select))
+        LOGGER.info('bands selected: {}'.format(bands_select))
         for bs in bands_select:
 
             parameter = {
@@ -441,7 +441,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
     def _get_bbox(self) -> BoundingBox:
         bbox = self.dc.bbox_of_product(self.data)
-        LOGGER.debug('bbox of product {}: {}'.format(self.data, bbox))
+        LOGGER.info('bbox of product {}: {}'.format(self.data, bbox))
         return bbox
 
     def _get_coverage_properties(self, bbox: BoundingBox) -> dict:
@@ -464,9 +464,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         product_metadata = self.dc.get_product_by_id(self.data)
 
-        LOGGER.debug("self.data: '{}'".format(self.data))
-        LOGGER.debug("product_metadata:\n{}\n".format(str(product_metadata)))
-        LOGGER.debug("product_metadata:\n{}\n"
+        LOGGER.info("self.data: '{}'".format(self.data))
+        LOGGER.info("product_metadata:\n{}\n".format(str(product_metadata)))
+        LOGGER.info("product_metadata:\n{}\n"
                      .format(str(json.dumps(product_metadata.definition,sort_keys=True, indent=4))))
 
         res = product_metadata.storage.resolution
