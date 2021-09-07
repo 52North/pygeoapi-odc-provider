@@ -464,6 +464,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         product_metadata = self.dc.get_product_by_id(self.data)
 
+        if product_metadata is None:
+            raise RuntimeError("Could not retrieve product '{}'".format(self.data))
+
         LOGGER.info("self.data: '{}'".format(self.data))
         LOGGER.info("product_metadata:\n{}\n".format(str(product_metadata)))
         LOGGER.info("product_metadata:\n{}\n"
