@@ -157,7 +157,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
     def _encode_dataset_type_as_record(self, product):
         bbox = self.dc.wgs84_bbox_of_product(product.name)
-        return {
+        record = {
             'id': product.name,
             'type': 'Feature',
             'geometry': {
@@ -172,6 +172,19 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             },
             'properties': self._encode_dataset_type_properties(product)
         }
+        links = []
+        if 'links' in product.metadata_doc.keys() and len(product.metadata_doc.get('links')) > 0:
+            for link in product.metadata_doc.get('links'):
+                links.append({
+                    'href': link.get('href'),
+                    'hreflang': link.get('hreflang'),
+                    'rel': link.get('rel'),
+                    'title': link.get('title'),
+                    'type': link.get('type')
+                })
+        if len(links) > 0:
+            record['links'] = links
+        return record
 
     def _encode_dataset_type_properties(self, product):
         properties = {}
