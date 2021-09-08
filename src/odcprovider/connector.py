@@ -17,7 +17,7 @@ from typing import Any, Union
 
 from datacube import Datacube
 from datacube.model import DatasetType
-from datacube.utils.geometry import bbox_union, BoundingBox
+from datacube.utils.geometry import bbox_union, BoundingBox, CRS
 from pandas import DataFrame
 
 from .constants import DEFAULT_APP
@@ -55,6 +55,9 @@ class OdcConnector:
 
     def get_crs_set(self, product: str) -> set:
         return self.metadatastore.get_crs_set(product)
+
+    def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
+        return self.metadatastore.wgs84_bbox_of_product(product)
 
     def load(self, product: str, **params) -> Any:
         return self.dc.load(product=product, **params)
@@ -98,6 +101,7 @@ class OdcMetadataStore():
         cls._instance.measurements_complex_without_archived = cls._get_complex_active_measurements(dc)
         cls._instance.crs_set_by_product_identifier = cls._get_crs_set_for_all_products(dc)
         cls._instance.bboxes_by_product_identifier = cls._get_bboxes_for_all_products(dc)
+        cls._instance.wgs84_bboxes_by_product_identifier = cls._get_wgs84_bboxs_for_all_products(dc)
 
     @classmethod
     def _create_identifier_product_map(cls, dc:Datacube) -> dict:
@@ -149,34 +153,64 @@ class OdcMetadataStore():
 
         return map
 
+    @classmethod
+    def _get_wgs84_bboxs_for_all_products(cls, dc: Datacube) -> dict:
+        wgs84_bboxes = {}
+        wgs84 = CRS('epsg:4326')
+
+        for product in cls._instance.product_names:
+            crs_set = cls._instance.crs_set_by_product_identifier[product]
+            if len(crs_set) == 1 and wgs84 not in crs_set:
+                wgs84_bboxes.update(
+                    {
+                        product: convert_datacube_bbox_to_wgs84(cls._instance.bboxes_by_product_identifier[product],
+                                                                next(iter(crs_set)))
+                    }
+                )
+            else:
+                # if len(crs_set) > 1 => the bbox is already in wgs84 by _get_bboxes_for_all_products
+                wgs84_bboxes.update(
+                    {
+                        product: cls._instance.bboxes_by_product_identifier[product]
+                    }
+                )
+
+        return wgs84_bboxes
+
     def list_product_names(self) -> list:
         return self.product_names;
 
-    def get_product_by_id(self, identifier) -> DatasetType:
+    def get_product_by_id(self, identifier: str) -> DatasetType:
+        self.check_product_parameter(identifier)
         return self.products_by_identifier[identifier]
 
-    def number_of_bands(self, product) -> int:
+    def number_of_bands(self, product: str) -> int:
+        self.check_product_parameter(product)
         return len(self.products_by_identifier[product].measurements)
 
-    def find_datasets(self, product):
+    def find_datasets(self, product: str) -> dict:
+        self.check_product_parameter(product)
         return self.datasets_by_product_identifier[product]
 
-    def list_measurements(self):
+    def list_measurements(self) -> DataFrame:
         return self.measurements_complex_without_archived
 
-    def bbox_of_product(self, product:str) -> BoundingBox:
-        """
-        Get bounding box of a product
-        :param product: product name
-        :returns datacube.utils.geometry._base.BoundingBox
-        """
+    def bbox_of_product(self, product: str) -> BoundingBox:
+        self.check_product_parameter(product)
+        return self.bboxes_by_product_identifier[product]
+
+    def check_product_parameter(self, product: str) -> None:
         if product is None:
             raise ValueError("product MUST not be None")
         if len(product) == 0:
             raise ValueError("product MUST not be an empty string")
         if product not in self.product_names:
             raise ValueError("product MUST be in datacube")
-        return self.bboxes_by_product_identifier[product]
 
-    def get_crs_set(self, product):
+    def get_crs_set(self, product: str) -> BoundingBox:
+        self.check_product_parameter(product)
         return self.crs_set_by_product_identifier[product]
+
+    def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
+        self.check_product_parameter(product)
+        return self.wgs84_bboxes_by_product_identifier[product]
