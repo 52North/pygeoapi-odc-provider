@@ -14,6 +14,8 @@
 import datetime
 import logging
 
+from datacube.model import DatasetType
+
 from .connector import OdcConnector
 from .utils import convert_datacube_bbox_to_geojson_wgs84_polygon
 from pygeoapi.provider.base import (BaseProvider,
@@ -93,7 +95,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         if startindex < 0:
             raise ProviderQueryError("startIndex < 0 makes no sense!")
 
-        features = [self._encode_as_record(self.dc.get_product_by_id(product)) for product in self.dc.list_product_names()]
+        features = [self._encode_dataset_type_as_record(self.dc.get_product_by_id(product)) for product in self.dc.list_product_names()]
 
         # apply limit and start index
         all_count = len(features)
@@ -125,7 +127,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier))
 
-    def _encode_as_record(self, product):
+    def _encode_as_record(self, product: DatasetType) -> dict:
         # product = self.dc.index.products.get_by_name(self.data)
         #
         # measurements = list(filter(lambda d: d['product'] in self.data,
@@ -138,7 +140,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         #     ]
         # }]
         return {
-            'id': product.get('name'),
+            'id': product.name,
             'properties': self._encode_record_properties(product)
         }
 
@@ -159,9 +161,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             'type': 'Feature',
             'geometry': {
                 'type': 'Polygon',
-                'coordinates': convert_datacube_bbox_to_geojson_wgs84_polygon(self.dc.bbox_of_product(product.name),
-                                                                              'epsg:' + str(
-                                                                                  product.grid_spec.crs.to_epsg()))
+                'coordinates': self.dc.wgs84_bbox_of_product(product.name)
             },
             'properties': self._encode_dataset_type_properties(product)
         }
@@ -169,8 +169,14 @@ class OpenDataCubeRecordsProvider(BaseProvider):
     def _encode_dataset_type_properties(self, product):
         properties = {}
         # properties from metadata doc
+        properties_to_skip = ['links']
         for metadata_key in product.metadata_doc.keys():
-            properties.update({metadata_key: product.metadata_doc.get(metadata_key).get('name')})
+            if metadata_key not in properties_to_skip:
+                property = product.metadata_doc.get(metadata_key)
+                if isinstance(property, dict) and 'name' in property.keys():
+                    properties.update({metadata_key: product.metadata_doc.get(metadata_key).get('name')})
+                elif isinstance(property, list):
+                    properties.update({metadata_key: property})
 
         # properties derived via datacube.utils.documents.DocReader
         properties.update(product.metadata.fields)
