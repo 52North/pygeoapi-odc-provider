@@ -13,15 +13,19 @@
 # =================================================================
 from __future__ import annotations
 import logging
+import os
 from typing import Any, Union
 
+import pickle
 from datacube import Datacube
 from datacube.model import DatasetType
 from datacube.utils.geometry import bbox_union, BoundingBox, CRS
 from pandas import DataFrame
 
-from .constants import DEFAULT_APP
+from .constants import DEFAULT_APP, CACHE_PICKLE
 from .utils import convert_datacube_bbox_to_wgs84
+
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,10 +88,20 @@ class OdcMetadataStore():
         if dc is None or not isinstance(dc, Datacube):
             raise RuntimeError('required Datacube object not received')
         if cls._instance is None:
-            LOGGER.debug("Creating instance of class '{}'".format(cls))
-            cls._instance = cls.__new__(cls)
-            # init variables
-            cls._init_cache(dc)
+            LOGGER.debug("Creating instance of class '{}'...".format(cls))
+            if os.path.exists(CACHE_PICKLE) and os.access(CACHE_PICKLE, mode=os.R_OK|os.W_OK):
+                # 1 try to load pickle from previous runs
+                LOGGER.debug('from pickle...')
+                cls._instance = pickle.load(open(CACHE_PICKLE, 'rb'))
+                LOGGER.debug('...DONE.')
+            else:
+                # 2 init from datacube
+                LOGGER.debug('from datacube...')
+                cls._instance = cls.__new__(cls)
+                # init variables
+                cls._init_cache(dc)
+                pickle.dump(cls._instance, open(CACHE_PICKLE, 'wb'))
+                LOGGER.debug('...DONE.')
         else:
             LOGGER.debug("Instance of class '{}' already existing".format(cls))
         return cls._instance
