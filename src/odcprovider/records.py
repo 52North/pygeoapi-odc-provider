@@ -94,7 +94,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             raise ProviderQueryError("startIndex < 0 makes no sense!")
 
         features = []
-        for product in self.dc.list_products(with_pandas=False):
+        for product in self.dc.list_product_names():
             features.append(self._encode_as_record(product))
 
         # apply limit and start index
