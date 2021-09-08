@@ -32,25 +32,6 @@ def test__encode_dataset_type_as_record():
     id = encoded_product.get('id')
     assert id is not None
     assert id == product_to_encode.name
-    assert 'links' in encoded_product.keys()
-    links = encoded_product.get('links')
-    assert links is not None
-    assert isinstance(links, list)
-    assert len(links) == 1
-    link = links[0]
-    assert link is not None
-    assert isinstance(link, dict)
-    assert len(link) == 5
-    assert link.get('rel') is not None
-    assert link.get('rel') == product_to_encode.metadata_doc.get('links')[0].get('rel')
-    assert link.get('href') is not None
-    assert link.get('href') == product_to_encode.metadata_doc.get('links')[0].get('href')
-    assert link.get('type') is not None
-    assert link.get('type') == product_to_encode.metadata_doc.get('links')[0].get('type')
-    assert link.get('hreflang') is not None
-    assert link.get('hreflang') == product_to_encode.metadata_doc.get('links')[0].get('hreflang')
-    assert link.get('title') is not None
-    assert link.get('title') == product_to_encode.metadata_doc.get('links')[0].get('title')
 
 
 def test__encode_dataset_type_properties():
@@ -68,3 +49,22 @@ def test__encode_dataset_type_properties():
     assert encoded_product_properties.get('category') == product_to_encode.metadata_doc.get('category').get('name')
     assert encoded_product_properties.get('keywords') is not None
     assert encoded_product_properties.get('keywords') == product_to_encode.metadata_doc.get('keywords')
+    assert 'associations' in encoded_product_properties.keys()
+    associations = encoded_product_properties.get('associations')
+    assert associations is not None
+    assert isinstance(associations, list)
+    assert len(associations) == 1
+    link = associations[0]
+    assert link is not None
+    assert isinstance(link, dict)
+    assert len(link) == 5
+    assert link.get('rel') is not None
+    assert link.get('rel') == product_to_encode.metadata_doc.get('links')[0].get('rel')
+    assert link.get('href') is not None
+    assert link.get('href') == product_to_encode.metadata_doc.get('links')[0].get('href')
+    assert link.get('type') is not None
+    assert link.get('type') == product_to_encode.metadata_doc.get('links')[0].get('type')
+    assert link.get('hreflang') is not None
+    assert link.get('hreflang') == product_to_encode.metadata_doc.get('links')[0].get('hreflang')
+    assert link.get('title') is not None
+    assert link.get('title') == product_to_encode.metadata_doc.get('links')[0].get('title')

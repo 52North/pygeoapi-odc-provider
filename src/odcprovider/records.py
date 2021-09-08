@@ -172,18 +172,6 @@ class OpenDataCubeRecordsProvider(BaseProvider):
             },
             'properties': self._encode_dataset_type_properties(product)
         }
-        links = []
-        if 'links' in product.metadata_doc.keys() and len(product.metadata_doc.get('links')) > 0:
-            for link in product.metadata_doc.get('links'):
-                links.append({
-                    'href': link.get('href'),
-                    'hreflang': link.get('hreflang'),
-                    'rel': link.get('rel'),
-                    'title': link.get('title'),
-                    'type': link.get('type')
-                })
-        if len(links) > 0:
-            record['links'] = links
         return record
 
     def _encode_dataset_type_properties(self, product):
@@ -197,6 +185,20 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                     properties.update({metadata_key: product.metadata_doc.get(metadata_key).get('name')})
                 elif isinstance(property, list):
                     properties.update({metadata_key: property})
+            elif metadata_key == 'links' and isinstance(product.metadata_doc.get(metadata_key), list) and len(product.metadata_doc.get(metadata_key)) > 0:
+                # add links to associations entry
+                links = []
+                for link in product.metadata_doc.get(metadata_key):
+                    links.append({
+                        'href': link.get('href'),
+                        'hreflang': link.get('hreflang'),
+                        'rel': link.get('rel'),
+                        'title': link.get('title'),
+                        'type': link.get('type')
+                    })
+                properties.update({
+                    'associations': links
+                })
 
         # properties derived via datacube.utils.documents.DocReader
         properties.update(product.metadata.fields)
