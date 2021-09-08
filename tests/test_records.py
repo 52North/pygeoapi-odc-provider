@@ -13,9 +13,8 @@
 # =================================================================
 import pickle
 
-import tests.test_connector
 from src.odcprovider.records import OpenDataCubeRecordsProvider
-from .test_connector import DatacubeMock
+from test_connector import DatacubeMock
 
 
 class OpenDataCubeRecordsProviderMock(OpenDataCubeRecordsProvider):

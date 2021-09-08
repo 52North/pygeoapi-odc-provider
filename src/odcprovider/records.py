@@ -156,12 +156,19 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         return properties
 
     def _encode_dataset_type_as_record(self, product):
+        bbox = self.dc.wgs84_bbox_of_product(product.name)
         return {
             'id': product.name,
             'type': 'Feature',
             'geometry': {
                 'type': 'Polygon',
-                'coordinates': self.dc.wgs84_bbox_of_product(product.name)
+                'coordinates': [[
+                    [bbox.left, bbox.top],
+                    [bbox.right, bbox.top],
+                    [bbox.right, bbox.bottom],
+                    [bbox.left, bbox.bottom],
+                    [bbox.left, bbox.top]
+                ]]
             },
             'properties': self._encode_dataset_type_properties(product)
         }

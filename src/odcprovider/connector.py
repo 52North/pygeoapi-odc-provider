@@ -37,7 +37,7 @@ class OdcConnector:
 
     def __init__(self) -> None:
         self.dc = Datacube(app=DEFAULT_APP)
-        self.metadatastore = OdcMetadataStore.instance(self.dc)
+        self.metadatastore = OdcMetadataStore.instance(self.dc, CACHE_PICKLE)
 
     def list_product_names(self) -> []:
         return self.metadatastore.list_product_names();
@@ -83,16 +83,16 @@ class OdcMetadataStore():
         raise RuntimeError('Call instance() instead')
 
     @classmethod
-    def instance(cls, dc:Datacube) -> OdcMetadataStore:
+    def instance(cls, dc:Datacube, cache_pickle: str) -> OdcMetadataStore:
         LOGGER.debug("instance() called")
         if dc is None or not isinstance(dc, Datacube):
             raise RuntimeError('required Datacube object not received')
         if cls._instance is None:
             LOGGER.debug("Creating instance of class '{}'...".format(cls))
-            if os.path.exists(CACHE_PICKLE) and os.access(CACHE_PICKLE, mode=os.R_OK|os.W_OK):
+            if os.path.exists(cache_pickle) and os.access(cache_pickle, mode=os.R_OK|os.W_OK):
                 # 1 try to load pickle from previous runs
                 LOGGER.debug('from pickle...')
-                cls._instance = pickle.load(open(CACHE_PICKLE, 'rb'))
+                cls._instance = pickle.load(open(cache_pickle, 'rb'))
                 LOGGER.debug('...DONE.')
             else:
                 # 2 init from datacube
@@ -100,7 +100,7 @@ class OdcMetadataStore():
                 cls._instance = cls.__new__(cls)
                 # init variables
                 cls._init_cache(dc)
-                pickle.dump(cls._instance, open(CACHE_PICKLE, 'wb'))
+                pickle.dump(cls._instance, open(cache_pickle, 'wb'))
                 LOGGER.debug('...DONE.')
         else:
             LOGGER.debug("Instance of class '{}' already existing".format(cls))

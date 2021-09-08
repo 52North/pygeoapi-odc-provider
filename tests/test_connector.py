@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
+import os
 import pickle
 from typing import Union
 
@@ -22,22 +23,29 @@ from pandas import DataFrame
 from src.odcprovider.connector import OdcMetadataStore
 
 
+def clean_up():
+    if os.path.exists('odc_cache.pickle'):
+        os.remove('odc_cache.pickle')
+
+
 def test_odc_metadata_store_instance_raise_error_on_missing_parameter():
 
     expected_error_message = 'required Datacube object not received'
     try:
-        OdcMetadataStore.instance(None)
+        OdcMetadataStore.instance(None, "odc_cache.pickle")
         assert False
 
     except RuntimeError as e:
         assert str(e) == expected_error_message
 
     try:
-        OdcMetadataStore.instance(dict())
+        OdcMetadataStore.instance(dict(), "odc_cache.pickle")
         assert False
 
     except RuntimeError as e:
         assert str(e) == expected_error_message
+
+    clean_up()
 
 
 def test_odc_metadata_store__init__raises_error():
@@ -46,9 +54,11 @@ def test_odc_metadata_store__init__raises_error():
     except RuntimeError as e:
         assert str(e) == 'Call instance() instead'
 
+    clean_up()
+
 
 def test_odc_metadata_store_list_product_names():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     def check(obj):
         assert obj is not None
@@ -59,10 +69,11 @@ def test_odc_metadata_store_list_product_names():
 
     check(store.product_names)
     check(store.list_product_names())
+    clean_up()
 
 
 def test_odc_metadata_store_get_product_by_id():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     received_product = store.get_product_by_id('dsm__NS__Port_Hawkesbury_2016')
 
@@ -70,18 +81,20 @@ def test_odc_metadata_store_get_product_by_id():
     assert isinstance(received_product, DatasetType)
     assert received_product.name == 'dsm__NS__Port_Hawkesbury_2016'
     assert received_product.metadata_doc.get('project').get('name') == 'Port_Hawkesbury_2016'
+    clean_up()
 
 
 def test_odc_metadata_store_number_of_bands():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     bands_count = store.number_of_bands('dsm__NS__Port_Hawkesbury_2016')
 
     assert bands_count == 1
+    clean_up()
 
 
 def test_odc_metadata_store_find_datasets():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     received_datasets = store.find_datasets('dsm__NS__Port_Hawkesbury_2016')
 
@@ -92,10 +105,11 @@ def test_odc_metadata_store_find_datasets():
     assert dataset_to_check is not None
     assert isinstance(dataset_to_check, Dataset)
     assert str(dataset_to_check.id) == '2f592194-d503-5608-aac4-7b2d4a4bbfa5'
+    clean_up()
 
 
 def test_odc_metadata_store_list_measurements():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     received_measurements = store.list_measurements()
 
@@ -106,10 +120,11 @@ def test_odc_metadata_store_list_measurements():
     assert received_measurements.iloc[1]['units'] == 'm'
     assert received_measurements.iloc[1]['dtype'] == 'float32'
     assert received_measurements.iloc[1]['nodata'] == -32767.0
+    clean_up()
 
 
 def test_odc_metadata_store_get_crs_set():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     received_crs_set = store.get_crs_set('dsm__NS__Port_Hawkesbury_2016')
 
@@ -118,10 +133,11 @@ def test_odc_metadata_store_get_crs_set():
     assert len(received_crs_set) == 2
     assert CRS('EPSG:2962') in received_crs_set
     assert CRS('EPSG:2961') in received_crs_set
+    clean_up()
 
 
 def test_odc_metadata_store_bbox_of_product():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     received_bbox = store.bbox_of_product('dsm__NS__Port_Hawkesbury_2016')
 
@@ -133,10 +149,11 @@ def test_odc_metadata_store_bbox_of_product():
     assert received_bbox.right == -60.68906463117518
     assert received_bbox.top == 45.72274962160044
     assert received_bbox.bottom == 45.405229022754746
+    clean_up()
 
 
 def test_odc_metadata_store_bbox_of_product_error_handling():
-    store = OdcMetadataStore.instance(DatacubeMock())
+    store = OdcMetadataStore.instance(DatacubeMock(), "odc_cache.pickle")
 
     try:
         store.bbox_of_product(None)
@@ -155,6 +172,7 @@ def test_odc_metadata_store_bbox_of_product_error_handling():
         assert False
     except ValueError as e:
         assert str(e) == 'product MUST be in datacube'
+    clean_up()
 
 
 class ProductsMock:
