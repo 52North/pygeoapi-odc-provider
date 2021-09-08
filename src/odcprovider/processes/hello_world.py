@@ -64,7 +64,7 @@ PROCESS_METADATA = {
         },
         'minOccurs': 1,
         'maxOccurs': 1,
-        'metadata': None,  # TODO how to use?
+        'metadata': None,  # ToDo how to use?
         'keywords': ['full name', 'personal']
     }, {
         'id': 'message',

@@ -11,16 +11,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =================================================================
+from __future__ import annotations
 import logging
-from typing import Any
+import os
+from typing import Any, Union
 
-import datacube
+import pickle
+from datacube import Datacube
 from datacube.model import DatasetType
-from datacube.utils.geometry import bbox_union, BoundingBox
+from datacube.utils.geometry import bbox_union, BoundingBox, CRS
 from pandas import DataFrame
 
-from .constants import DEFAULT_APP
+from .constants import DEFAULT_APP, CACHE_PICKLE
 from .utils import convert_datacube_bbox_to_wgs84
+
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,72 +36,195 @@ class OdcConnector:
     """
 
     def __init__(self) -> None:
-        self.dc = None
-
-    def _ensure_init(self) -> None:
-        if self.dc is None:
-            self.dc = datacube.Datacube(app=DEFAULT_APP)
+        self.dc = Datacube(app=DEFAULT_APP)
+        self.metadatastore = OdcMetadataStore.instance(self.dc, CACHE_PICKLE)
 
     def list_product_names(self) -> []:
-        self._ensure_init()
-        return [d['name'] for d in self.dc.list_products(with_pandas=False)]
+        return self.metadatastore.list_product_names();
 
-    def load(self, product: str, **params) -> Any:
-        self._ensure_init()
-        return self.dc.load(product=product, **params)
-
-    def list_products(self, show_archived: bool = False, with_pandas: bool = True) -> list:
-        self._ensure_init()
-        return self.dc.list_products(show_archived=show_archived, with_pandas=with_pandas)
+    def get_product_by_id(self, identifier: str) -> DatasetType:
+        return self.metadatastore.get_product_by_id(identifier)
 
     def number_of_bands(self, product: str) -> int:
-        self._ensure_init()
-        return len(self.dc.index.products.get_by_name(product).measurements)
+        return self.metadatastore.number_of_bands(product)
 
-    def find_datasets(self, **search_terms) -> list:
-        self._ensure_init()
-        return self.dc.find_datasets(**search_terms)
+    def get_datasets_for_product(self, product:str) -> list:
+        return self.metadatastore.find_datasets(product)
 
-    def list_measurements(self, show_archived: bool = False, with_pandas: bool = True) -> DataFrame:
-        self._ensure_init()
-        return self.dc.list_measurements(show_archived=show_archived, with_pandas=with_pandas)
+    def list_measurements(self) -> DataFrame:
+        return self.metadatastore.list_measurements()
 
     def bbox_of_product(self, product: str) -> BoundingBox:
-        """
-        Get bounding box of a product
-        :param product: product name
-        :returns datacube.utils.geometry._base.BoundingBox
-        """
-        self._ensure_init()
+        return self.metadatastore.bbox_of_product(product)
+
+    def get_crs_set(self, product: str) -> set:
+        return self.metadatastore.get_crs_set(product)
+
+    def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
+        return self.metadatastore.wgs84_bbox_of_product(product)
+
+    def load(self, product: str, **params) -> Any:
+        return self.dc.load(product=product, **params)
+
+
+class OdcMetadataStore():
+    """
+    Stores not changing metadata of the accessed OpenDataCube instance.
+    Implementation uses singleton pattern to improve performance when
+    accessing the metadata.
+    Implementation follows:
+
+        https://python-patterns.guide/gang-of-four/singleton/
+    """
+
+    _instance = None
+
+    def __init__(self):
+        raise RuntimeError('Call instance() instead')
+
+    @classmethod
+    def instance(cls, dc:Datacube, cache_pickle: str) -> OdcMetadataStore:
+        LOGGER.debug("instance() called")
+        if dc is None or not isinstance(dc, Datacube):
+            raise RuntimeError('required Datacube object not received')
+        if cls._instance is None:
+            LOGGER.debug("Creating instance of class '{}'...".format(cls))
+            if os.path.exists(cache_pickle) and os.access(cache_pickle, mode=os.R_OK|os.W_OK):
+                # 1 try to load pickle from previous runs
+                LOGGER.debug('from pickle...')
+                cls._instance = pickle.load(open(cache_pickle, 'rb'))
+                LOGGER.debug('...DONE.')
+            else:
+                # 2 init from datacube
+                LOGGER.debug('from datacube...')
+                cls._instance = cls.__new__(cls)
+                # init variables
+                cls._init_cache(dc)
+                pickle.dump(cls._instance, open(cache_pickle, 'wb'))
+                LOGGER.debug('...DONE.')
+        else:
+            LOGGER.debug("Instance of class '{}' already existing".format(cls))
+        return cls._instance
+
+    @classmethod
+    def _init_cache(cls, dc:Datacube) -> None:
+        LOGGER.debug("_init_cache() called")
+        cls._instance.product_names = [d['name'] for d in dc.list_products(with_pandas=False)]
+        cls._instance.products_by_identifier = cls._create_identifier_product_map(dc)
+        cls._instance.datasets_by_product_identifier = cls._create_product_dataset_map(dc)
+        cls._instance.measurements_complex_without_archived = cls._get_complex_active_measurements(dc)
+        cls._instance.crs_set_by_product_identifier = cls._get_crs_set_for_all_products(dc)
+        cls._instance.bboxes_by_product_identifier = cls._get_bboxes_for_all_products(dc)
+        cls._instance.wgs84_bboxes_by_product_identifier = cls._get_wgs84_bboxs_for_all_products(dc)
+
+    @classmethod
+    def _create_identifier_product_map(cls, dc:Datacube) -> dict:
+        map = dict()
+        for product in cls._instance.product_names:
+            map[product] = dc.index.products.get_by_name(product)
+        return map
+
+    @classmethod
+    def _create_product_dataset_map(cls, dc:Datacube) -> dict:
+        map = dict()
+        for product in cls._instance.product_names:
+            map[product] = dc.find_datasets(product=product)
+        return map
+
+    @classmethod
+    def _get_complex_active_measurements(cls, dc:Datacube) -> DataFrame:
+        return dc.list_measurements(show_archived=False, with_pandas=True)
+
+    @classmethod
+    def _get_crs_set_for_all_products(cls, dc:Datacube) -> dict:
+        map = dict()
+        for product in cls._instance.product_names:
+            crs_set = set()
+            for dataset in cls._instance.datasets_by_product_identifier[product]:
+                crs_set.add(dataset.crs)
+            map[product] = crs_set
+        return map
+
+    @classmethod
+    def _get_bboxes_for_all_products(cls, dc:Datacube) -> dict:
+        map = dict()
+        for product in cls._instance.product_names:
+            crs_set = cls._instance.crs_set_by_product_identifier[product]
+            if len(crs_set) > 1:
+                LOGGER.info('product {} has datasets with varying crs:'.format(product))
+                for crs in crs_set:
+                    LOGGER.info('- {}'.format(str(crs)))
+                LOGGER.info('reproject to WGS84.')
+
+            bbs = []
+            for dataset in cls._instance.datasets_by_product_identifier[product]:
+                if len(crs_set) == 1:
+                    bbs.append(dataset.bounds)
+                else:
+                    bbs.append(convert_datacube_bbox_to_wgs84(dataset.bounds, str(dataset.crs)))
+
+            map[product] = bbox_union(bbs)
+
+        return map
+
+    @classmethod
+    def _get_wgs84_bboxs_for_all_products(cls, dc: Datacube) -> dict:
+        wgs84_bboxes = {}
+        wgs84 = CRS('epsg:4326')
+
+        for product in cls._instance.product_names:
+            crs_set = cls._instance.crs_set_by_product_identifier[product]
+            if len(crs_set) == 1 and wgs84 not in crs_set:
+                wgs84_bboxes.update(
+                    {
+                        product: convert_datacube_bbox_to_wgs84(cls._instance.bboxes_by_product_identifier[product],
+                                                                next(iter(crs_set)))
+                    }
+                )
+            else:
+                # if len(crs_set) > 1 => the bbox is already in wgs84 by _get_bboxes_for_all_products
+                wgs84_bboxes.update(
+                    {
+                        product: cls._instance.bboxes_by_product_identifier[product]
+                    }
+                )
+
+        return wgs84_bboxes
+
+    def list_product_names(self) -> list:
+        return self.product_names;
+
+    def get_product_by_id(self, identifier: str) -> DatasetType:
+        self.check_product_parameter(identifier)
+        return self.products_by_identifier[identifier]
+
+    def number_of_bands(self, product: str) -> int:
+        self.check_product_parameter(product)
+        return len(self.products_by_identifier[product].measurements)
+
+    def find_datasets(self, product: str) -> dict:
+        self.check_product_parameter(product)
+        return self.datasets_by_product_identifier[product]
+
+    def list_measurements(self) -> DataFrame:
+        return self.measurements_complex_without_archived
+
+    def bbox_of_product(self, product: str) -> BoundingBox:
+        self.check_product_parameter(product)
+        return self.bboxes_by_product_identifier[product]
+
+    def check_product_parameter(self, product: str) -> None:
         if product is None:
             raise ValueError("product MUST not be None")
         if len(product) == 0:
             raise ValueError("product MUST not be an empty string")
-        if product not in self.list_product_names():
+        if product not in self.product_names:
             raise ValueError("product MUST be in datacube")
 
-        crs_set = self.get_crs_set(product=product)
-        if len(crs_set) > 1:
-            LOGGER.info('product {} has datasets with varying crs:'.format(product))
-            for crs in crs_set:
-                LOGGER.info('- {}'.format(str(crs)))
-            LOGGER.info('reproject to WGS84.')
+    def get_crs_set(self, product: str) -> BoundingBox:
+        self.check_product_parameter(product)
+        return self.crs_set_by_product_identifier[product]
 
-        bbs = []
-        for dataset in self.find_datasets(product=product):
-            if len(crs_set) == 1:
-                bbs.append(dataset.bounds)
-            else:
-                bbs.append(convert_datacube_bbox_to_wgs84(dataset.bounds, str(dataset.crs)))
-
-        return bbox_union(bbs)
-
-    def get_product_by_id(self, identifier: str) -> DatasetType:
-        self._ensure_init()
-        return self.dc.index.products.get_by_name(name=identifier)
-
-    def get_crs_set(self, product: str) -> set:
-        crs_set = set()
-        for dataset in self.dc.find_datasets(product=product):
-            crs_set.add(dataset.crs)
-        return crs_set
+    def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
+        self.check_product_parameter(product)
+        return self.wgs84_bboxes_by_product_identifier[product]

@@ -63,8 +63,8 @@ def parse_parameter() -> argparse.Namespace:
         args.exclude_products = [s.strip() for s in args.exclude_products.split(",")]
 
     LOGGER.info("""
-Starting creating pygeoapi config
-=================================
+Start creating pygeoapi config
+==============================
 - empty values are allowed
 
 infile            : {}
@@ -141,15 +141,22 @@ def _merge_config(infile, data):
 
 
 def main():
-
     args = parse_parameter()
 
     # Create collection for each datacube product that is not excluded
     dc = OdcConnector()
     data = {'resources': {}}
 
-    for dc_product_name in dc.list_product_names():
-        if dc_product_name not in args.exclude_products:
+    products = dc.list_product_names()
+    LOGGER.info("Start porcessing {} products in ODC instance".format(len(products)))
+    idx = 1
+    for dc_product_name in products:
+        LOGGER.info("[{}/{}] Processing product '{}'".format(idx, len(products), dc_product_name))
+        if dc_product_name in args.exclude_products:
+            LOGGER.info("[{}/{}] Product '{}' is list of products to exclude, hence skipping it"
+                        .format(idx, len(products), dc_product_name))
+        else:
+            LOGGER.info("[{}/{}] Including product '{}'".format(idx, len(products), dc_product_name))
             dc_product = dc.get_product_by_id(dc_product_name)
             # Make sure bbox is in WGS84
             if len(dc.get_crs_set(dc_product.name)) == 1:
@@ -160,12 +167,18 @@ def main():
 
             data['resources'][dc_product.name] = _create_resource_from_odc_product(dc_product, bbox)
 
+        idx = idx + 1
+
+    LOGGER.info("Finished processing {} products".format(len(products)))
+
     # Write to yaml file, merge with provided config yaml if given
     with open(args.outfile, 'w') as outfile:
         if args.infile is not None:
             data = _merge_config(args.infile, data)
+        LOGGER.debug("Writing configuration to file '{}':\n{}\n".format(outfile.name, data))
         yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
 
+    LOGGER.info("Finished processing ODC products")
 
 if __name__ == "__main__":
     main()

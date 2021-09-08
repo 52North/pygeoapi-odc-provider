@@ -17,7 +17,8 @@
 # =================================================================
 
 import logging
-# TODO move to OdcConnector somehow
+import json
+# ToDo move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
@@ -57,7 +58,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance"
                                        .format(self.data))
 
-        LOGGER.debug('Start initializing product {}'.format(self.data))
+        LOGGER.info('Start initializing product {}'.format(self.data))
 
         try:
             self.crs_obj = None  # datacube.utils.geometry.CRS
@@ -70,7 +71,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             self.crs = self._coverage_properties['crs_uri']
             self.num_bands = self._coverage_properties['num_bands']
             self.fields = [str(num) for num in range(1, self.num_bands + 1)]
-            LOGGER.debug('Finished initializing product {}'.format(self.data))
+            LOGGER.info('Finished initializing product {}'.format(self.data))
         except Exception as err:
             LOGGER.warning(err)
             raise ProviderConnectionError(err)
@@ -104,13 +105,13 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ---------------- #
 
         bands = range_subset
-        LOGGER.debug('Bands: {}, subsets: {}'.format(bands, subsets))
+        LOGGER.info('Bands: {}, subsets: {}'.format(bands, subsets))
 
         # initial bbox, full extent of collection
         minx, miny, maxx, maxy = self._coverage_properties['bbox']
 
         if all([not bands, not subsets, not bbox]):
-            LOGGER.debug('No parameters specified')
+            LOGGER.info('No parameters specified')
 
         if all([self._coverage_properties['x_axis_label'] not in subsets,
                 self._coverage_properties['y_axis_label'] not in subsets,
@@ -136,23 +137,23 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
 
             if crs_src == crs_dest:
-                LOGGER.debug('source bbox CRS and data CRS are the same')
+                LOGGER.info('source bbox CRS and data CRS are the same')
             else:
-                LOGGER.debug('source bbox CRS and data CRS are different')
-                LOGGER.debug('reprojecting bbox into native coordinates')
+                LOGGER.info('source bbox CRS and data CRS are different')
+                LOGGER.info('reprojecting bbox into native coordinates')
 
                 t = Transformer.from_crs(crs_src, crs_dest, always_xy=True)
                 minx, miny = t.transform(minxbox, minybox)
                 maxx, maxy = t.transform(maxxbox, maxybox)
 
-                LOGGER.debug('Source coordinates: {}'.format(
+                LOGGER.info('Source coordinates: {}'.format(
                     [minxbox, minybox, maxxbox, maxybox]))
-                LOGGER.debug('Destination coordinates: {}'.format(
+                LOGGER.info('Destination coordinates: {}'.format(
                     [minx, miny, maxx, maxy]))
 
         elif (self._coverage_properties['x_axis_label'] in subsets and
                 self._coverage_properties['y_axis_label'] in subsets):
-            LOGGER.debug('Creating spatial subset')
+            LOGGER.info('Creating spatial subset')
 
             x = self._coverage_properties['x_axis_label']
             y = self._coverage_properties['y_axis_label']
@@ -167,7 +168,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         else:
             max_allowed_delta = 0.125
 
-        # TODO consider resolution in next development iteration
+        # ToDo consider resolution in next development iteration
 
         if minx > maxx or miny > maxy:
             msg = 'spatial subsetting invalid min > max'
@@ -234,12 +235,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                     'bands': bands}
 
         if self.options is not None:
-            LOGGER.debug('Adding dataset options')
+            LOGGER.info('Adding dataset options')
             for key, value in self.options.items():
                 out_meta[key] = value
 
         if format_ == 'json':
-            LOGGER.debug('Creating output in CoverageJSON')
+            LOGGER.info('Creating output in CoverageJSON')
             return self.gen_covjson(out_meta, dataset)
 
         elif format_.lower() == 'geotiff':
@@ -262,11 +263,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                     # input is expected as (bands, rows, cols)
                     dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))
 
-                LOGGER.debug('Returning data as GeoTIFF')
+                LOGGER.info('Returning data as GeoTIFF')
                 return memfile.read()
 
         else:
-            LOGGER.debug('Returning data as netCDF')
+            LOGGER.info('Returning data as netCDF')
             # Note: "If no path is provided, this function returns the resulting netCDF file as bytes; in this case,
             # we need to use scipy, which does not support netCDF version 4 (the default format becomes NETCDF3_64BIT)."
             # (http://xarray.pydata.org/en/stable/generated/xarray.Dataset.to_netcdf.html)
@@ -282,7 +283,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         # ToDo: support time dimension
 
-        LOGGER.debug('Creating CoverageJSON domain')
+        LOGGER.info('Creating CoverageJSON domain')
         minx, miny, maxx, maxy = metadata['bbox']
 
         cj = {
@@ -316,7 +317,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         bands_select = metadata['bands']
 
-        LOGGER.debug('bands selected: {}'.format(bands_select))
+        LOGGER.info('bands selected: {}'.format(bands_select))
         for bs in bands_select:
 
             parameter = {
@@ -440,10 +441,10 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
     def _get_bbox(self) -> BoundingBox:
         bbox = self.dc.bbox_of_product(self.data)
-        LOGGER.debug('bbox of product {}: {}'.format(self.data, bbox))
+        LOGGER.info('bbox of product {}: {}'.format(self.data, bbox))
         return bbox
 
-    def _get_coverage_properties(self, bbox):
+    def _get_coverage_properties(self, bbox: BoundingBox) -> dict:
         """
         Helper function to normalize coverage properties
         :returns: `dict` of coverage properties
@@ -461,23 +462,36 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # self.dc.index.products.get_by_name(self.product_name).default_crs
         # https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.model.DatasetType.html#datacube.model.DatasetType
 
-        product_list = self.dc.list_products()
-        product_metadata = product_list[product_list['name'] == self.data]
+        product_metadata = self.dc.get_product_by_id(self.data)
 
-        res = product_metadata.iloc[0]['resolution']
-        if isinstance(res, tuple):
-            # ToDO: check coordinate order!
-            resx = res[1]
-            resy = res[0]
+        if product_metadata is None:
+            raise RuntimeError("Could not retrieve product '{}'".format(self.data))
+
+        res = None
+        crs_str = None
+
+        if 'storage' in product_metadata.definition.keys() and \
+                'resolution' in product_metadata.definition.get('storage').keys():
+            res = product_metadata.definition.get('storage').get('resolution')
+
+            if 'crs' in product_metadata.definition.get('storage').keys():
+                crs_str = str(product_metadata.definition.get('storage').get('crs'))
+
+        if res is not None:
+            if isinstance(res, tuple):
+                # ToDo: check coordinate order!
+                resx = res[1]
+                resy = res[0]
+            elif isinstance(res, dict) and 'x' in res.keys() and 'y' in res.keys():
+                resx = res.get('x')
+                resy = res.get('y')
         else:
             resx = None
             resy = None
 
-        crs_str = product_metadata.iloc[0]['crs']
-
         # spatial_dimensions = product_metadata.iloc[0]['spatial_dimensions']
         # if isinstance(spatial_dimensions, tuple):
-        #     # ToDO: check axis order!
+        #     # ToDo: check axis order!
         #     dim_we = spatial_dimensions[1]
         #     dim_ns = spatial_dimensions[0]
         # else:
@@ -494,12 +508,13 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         resy_list = []
         transform_list = []
         dim_list = []
-        for dataset in self.dc.find_datasets(product=self.data):
+        # ToDo can we replace this for-loop by using OdcConnector.bbox_of_product()?
+        for dataset in self.dc.get_datasets_for_product(self.data):
             crs_list.append(dataset.crs)
             # ToDo: check coordinate order!
-            resx_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][0])
-            resy_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'][4])
-            transform_list.append(dataset.__dict__['metadata_doc']['grids']['default']['transform'])
+            resx_list.append(dataset.metadata_doc['grids']['default']['transform'][0])
+            resy_list.append(dataset.metadata_doc['grids']['default']['transform'][4])
+            transform_list.append(dataset.metadata_doc['grids']['default']['transform'])
             dim_list.append(dataset.crs.dimensions)
 
         # Check if all datasets have the same crs, resolution and transform
@@ -511,7 +526,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.warning("Product {} has datasets with different transforms.".format(self.data))
 
         # Use dataset metadata if metadata was not specified on product level
-        # ToDO: support different crs/resolution for different datasets including reprojection
+        # ToDo: support different crs/resolution for different datasets including reprojection
         if crs_str is None or isnull(crs_str):
             self.crs_obj = crs_list[0]
         else:
@@ -554,7 +569,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         }
 
         if self.crs_obj.projected:
-            properties['crs_uri'] = '{}/{}'.format('http://www.opengis.net/def/crs/EPSG/9.8.15', self.crs_obj.to_epsg())
+            properties['crs_uri'] = 'http://www.opengis.net/def/crs/EPSG/9.8.15/{}'.format(self.crs_obj.to_epsg())
             properties['x_axis_label'] = 'x'
             properties['y_axis_label'] = 'y'
             properties['bbox_units'] = self.crs_obj.units[0]
