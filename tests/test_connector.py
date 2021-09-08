@@ -54,7 +54,7 @@ def test_odc_metadata_store_list_product_names():
         assert obj is not None
         assert isinstance(obj, list)
         assert len(obj) == 2
-        assert obj[0] == 'dsm__NRCAN__Edmonton_2018'
+        assert obj[0] == 'dsm__NS__Port_Hawkesbury_2016'
         assert obj[1] == 'dsm__MB__The_Pas_2014'
 
     check(store.product_names)
@@ -64,18 +64,18 @@ def test_odc_metadata_store_list_product_names():
 def test_odc_metadata_store_get_product_by_id():
     store = OdcMetadataStore.instance(DatacubeMock())
 
-    received_product = store.get_product_by_id('dsm__NRCAN__Edmonton_2018')
+    received_product = store.get_product_by_id('dsm__NS__Port_Hawkesbury_2016')
 
     assert received_product is not None
     assert isinstance(received_product, DatasetType)
-    assert received_product.name == 'dsm__NRCAN__Edmonton_2018'
-    assert received_product.metadata_doc.get('project').get('name') == 'Edmonton_2018'
+    assert received_product.name == 'dsm__NS__Port_Hawkesbury_2016'
+    assert received_product.metadata_doc.get('project').get('name') == 'Port_Hawkesbury_2016'
 
 
 def test_odc_metadata_store_number_of_bands():
     store = OdcMetadataStore.instance(DatacubeMock())
 
-    bands_count = store.number_of_bands('dsm__NRCAN__Edmonton_2018')
+    bands_count = store.number_of_bands('dsm__NS__Port_Hawkesbury_2016')
 
     assert bands_count == 1
 
@@ -83,15 +83,15 @@ def test_odc_metadata_store_number_of_bands():
 def test_odc_metadata_store_find_datasets():
     store = OdcMetadataStore.instance(DatacubeMock())
 
-    received_datasets = store.find_datasets('dsm__NRCAN__Edmonton_2018')
+    received_datasets = store.find_datasets('dsm__NS__Port_Hawkesbury_2016')
 
     assert received_datasets is not None
     assert isinstance(received_datasets, list)
-    assert len(received_datasets) == 13
+    assert len(received_datasets) == 29
     dataset_to_check = received_datasets[2]
     assert dataset_to_check is not None
     assert isinstance(dataset_to_check, Dataset)
-    assert str(dataset_to_check.id) == 'cfb39699-4665-57d3-8aa6-b56b62bce226'
+    assert str(dataset_to_check.id) == '2f592194-d503-5608-aac4-7b2d4a4bbfa5'
 
 
 def test_odc_metadata_store_list_measurements():
@@ -111,29 +111,28 @@ def test_odc_metadata_store_list_measurements():
 def test_odc_metadata_store_get_crs_set():
     store = OdcMetadataStore.instance(DatacubeMock())
 
-    received_crs_set = store.get_crs_set('dsm__NRCAN__Edmonton_2018')
+    received_crs_set = store.get_crs_set('dsm__NS__Port_Hawkesbury_2016')
 
     assert received_crs_set is not None
     assert isinstance(received_crs_set, set)
-    assert len(received_crs_set) == 1
-    crs = received_crs_set.pop()
-    assert isinstance(crs, CRS)
-    assert str(crs) == 'EPSG:2955'
+    assert len(received_crs_set) == 2
+    assert CRS('EPSG:2962') in received_crs_set
+    assert CRS('EPSG:2961') in received_crs_set
 
 
 def test_odc_metadata_store_bbox_of_product():
     store = OdcMetadataStore.instance(DatacubeMock())
 
-    received_bbox = store.bbox_of_product('dsm__NRCAN__Edmonton_2018')
+    received_bbox = store.bbox_of_product('dsm__NS__Port_Hawkesbury_2016')
 
     assert received_bbox is not None
     assert isinstance(received_bbox, BoundingBox)
-    assert received_bbox.width == 20000
-    assert received_bbox.height == 80000
-    assert received_bbox.left == 700000.0
-    assert received_bbox.right == 720000.0
-    assert received_bbox.top == 5970000.0
-    assert received_bbox.bottom == 5890000.0
+    assert received_bbox.width == 1
+    assert received_bbox.height == 0
+    assert received_bbox.left == -61.72191624413459
+    assert received_bbox.right == -60.68906463117518
+    assert received_bbox.top == 45.72274962160044
+    assert received_bbox.bottom == 45.405229022754746
 
 
 def test_odc_metadata_store_bbox_of_product_error_handling():
@@ -157,9 +156,10 @@ def test_odc_metadata_store_bbox_of_product_error_handling():
     except ValueError as e:
         assert str(e) == 'product MUST be in datacube'
 
+
 class ProductsMock:
     def get_by_name(self, product:str) -> DatasetType:
-        if product == 'dsm__NRCAN__Edmonton_2018':
+        if product == 'dsm__NS__Port_Hawkesbury_2016':
             return pickle.load(open("./data/product_2.pickle", "rb"))
         elif product == 'dsm__MB__The_Pas_2014':
             return pickle.load(open("./data/product_1.pickle", "rb"))
@@ -179,12 +179,15 @@ class DatacubeMock(Datacube):
 
     def list_products(self, show_archived: bool = False, with_pandas: bool = False) -> Union[list, DataFrame, None]:
         if not with_pandas:
-            return [{ "name":"dsm__NRCAN__Edmonton_2018"}, { "name":"dsm__MB__The_Pas_2014"}]
+            return [
+                { 'name':'dsm__NS__Port_Hawkesbury_2016'},
+                { 'name':'dsm__MB__The_Pas_2014'}
+            ]
         else:
             return self.products
 
     def find_datasets(self, product:str) -> list:
-        if product == 'dsm__NRCAN__Edmonton_2018':
+        if product == 'dsm__NS__Port_Hawkesbury_2016':
             return pickle.load(open("./data/datasets_2.pickle", "rb"))
         elif product == 'dsm__MB__The_Pas_2014':
             return pickle.load(open("./data/datasets_1.pickle", "rb"))
@@ -193,3 +196,6 @@ class DatacubeMock(Datacube):
 
     def list_measurements(self, show_archived=False, with_pandas=True) -> DataFrame:
         return pickle.load(open("./data/measurements.pickle", "rb"))
+
+    def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
+        return pickle.load(open("./data/wgs84_bbox.pickle", "rb"))
