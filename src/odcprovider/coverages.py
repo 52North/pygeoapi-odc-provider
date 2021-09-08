@@ -20,6 +20,7 @@ import logging
 import json
 # ToDo move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
+from numpy import NaN
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
@@ -427,7 +428,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                 },
                 "_meta": {
                     "tags": {
-                        "Aliases": self._measurement_properties[row]['aliases'],
+                        "Aliases": self._measurement_properties[row]['aliases']
+                        if self._measurement_properties[row]['aliases'] != NaN else "NaN",
                     }
                 }
             })
