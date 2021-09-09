@@ -86,8 +86,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         # 'resolution': (-1.0, 1.0)
         # }
         #
-        # ToDo woher den Spatial Extend des Products?
-        # ToDo datasets oder measurements auflisten? tendiere zu measurements
+        # ToDo list datasets or measurements?
 
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
