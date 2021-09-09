@@ -53,21 +53,39 @@ def test__encode_dataset_type_properties():
     associations = encoded_product_properties.get('associations')
     assert associations is not None
     assert isinstance(associations, list)
-    assert len(associations) == 1
-    link = associations[0]
-    assert link is not None
-    assert isinstance(link, dict)
-    assert len(link) == 5
-    assert link.get('rel') is not None
-    assert link.get('rel') == product_to_encode.metadata_doc.get('links')[0].get('rel')
-    assert link.get('href') is not None
-    assert link.get('href') == product_to_encode.metadata_doc.get('links')[0].get('href')
-    assert link.get('type') is not None
-    assert link.get('type') == product_to_encode.metadata_doc.get('links')[0].get('type')
-    assert link.get('hreflang') is not None
-    assert link.get('hreflang') == product_to_encode.metadata_doc.get('links')[0].get('hreflang')
-    assert link.get('title') is not None
-    assert link.get('title') == product_to_encode.metadata_doc.get('links')[0].get('title')
+    assert len(associations) == 4
+    expected_link = {
+        'rel': product_to_encode.metadata_doc.get('links')[0].get('rel'),
+        'href': product_to_encode.metadata_doc.get('links')[0].get('href'),
+        'type': product_to_encode.metadata_doc.get('links')[0].get('type'),
+        'hreflang': product_to_encode.metadata_doc.get('links')[0].get('hreflang'),
+        'title': product_to_encode.metadata_doc.get('links')[0].get('title')
+    }
+    assert expected_link in associations
+    expected_link_geo_json = {
+        'rel': 'item',
+        'href': '../../{}?f=json'.format(product_to_encode.name),
+        'type': 'application/geo+json',
+        'title': product_to_encode.name
+    }
+    assert expected_link_geo_json in associations
+    # other formats for rel items
+    # application/ld+json
+    expected_link_ld_json = {
+        'rel': 'item',
+        'href': '../../{}?f=jsonld'.format(product_to_encode.name),
+        'type': 'application/ld+json',
+        'title': product_to_encode.name
+    }
+    assert expected_link_ld_json in associations
+    # text/html
+    expected_link_html_json = {
+        'rel': 'item',
+        'href': '../../{}?f=html'.format(product_to_encode.name),
+        'type': 'text/html',
+        'title': product_to_encode.name
+    }
+    assert expected_link_html_json in associations
 
 
 def test__encode_dataset_type_properties_landsat8_c2_l2():
@@ -83,7 +101,7 @@ def test__encode_dataset_type_properties_landsat8_c2_l2():
     associations = properties.get('associations')
     assert associations is not None
     assert isinstance(associations, list)
-    assert len(associations) == 1
+    assert len(associations) == 4
     link = associations[0]
     assert link is not None
     assert isinstance(link, dict)

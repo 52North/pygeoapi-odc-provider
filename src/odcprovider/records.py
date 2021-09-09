@@ -195,6 +195,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                         'title': link.get('title'),
                         'type': link.get('type')
                     })
+                self._add_resource_associations(links, product.name)
                 properties.update({
                     'associations': links
                 })
@@ -203,3 +204,17 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         properties.update(product.metadata.fields)
 
         return properties
+
+    def _add_resource_associations(self, links: list, name: str) -> None:
+        types_format_map = {
+            'application/geo+json': 'json',
+            'application/ld+json': 'jsonld',
+            'text/html': 'html'
+        }
+        for key, value in types_format_map.items():
+            links.append({
+                'rel': 'item',
+                'href': '../../{}?f={}'.format(name, value),
+                'type': key,
+                'title': name
+            })
