@@ -24,7 +24,7 @@ class OpenDataCubeRecordsProviderMock(OpenDataCubeRecordsProvider):
 
 
 def test__encode_dataset_type_as_record():
-    product_to_encode = pickle.load(open("./data/product_1.pickle", "rb"))
+    product_to_encode = pickle.load(open('./data/product_1.pickle', 'rb'))
     mock = OpenDataCubeRecordsProviderMock()
     encoded_product = mock._encode_dataset_type_as_record(product_to_encode)
 
@@ -35,7 +35,7 @@ def test__encode_dataset_type_as_record():
 
 
 def test__encode_dataset_type_properties():
-    product_to_encode = pickle.load(open("./data/product_1.pickle", "rb"))
+    product_to_encode = pickle.load(open('./data/product_1.pickle', 'rb'))
     mock = OpenDataCubeRecordsProviderMock()
     encoded_product_properties = mock._encode_dataset_type_properties(product_to_encode)
 
@@ -68,3 +68,33 @@ def test__encode_dataset_type_properties():
     assert link.get('hreflang') == product_to_encode.metadata_doc.get('links')[0].get('hreflang')
     assert link.get('title') is not None
     assert link.get('title') == product_to_encode.metadata_doc.get('links')[0].get('title')
+
+
+def test__encode_dataset_type_properties_landsat8_c2_l2():
+    product = pickle.load(open('./data/landsat_product.pickle', 'rb'))
+    mock = OpenDataCubeRecordsProviderMock()
+
+    properties = mock._encode_dataset_type_properties(product)
+
+    assert properties is not None
+    assert isinstance(properties, dict)
+    assert len(properties) == 14
+    assert 'associations' in properties.keys()
+    associations = properties.get('associations')
+    assert associations is not None
+    assert isinstance(associations, list)
+    assert len(associations) == 1
+    link = associations[0]
+    assert link is not None
+    assert isinstance(link, dict)
+    assert len(link) == 5
+    assert link.get('rel') is not None
+    assert link.get('rel') == product.metadata_doc.get('links')[0].get('rel')
+    assert link.get('href') is not None
+    assert link.get('href') == product.metadata_doc.get('links')[0].get('href')
+    assert link.get('type') is not None
+    assert link.get('type') == product.metadata_doc.get('links')[0].get('type')
+    assert link.get('hreflang') is not None
+    assert link.get('hreflang') == product.metadata_doc.get('links')[0].get('hreflang')
+    assert link.get('title') is not None
+    assert link.get('title') == product.metadata_doc.get('links')[0].get('title')
