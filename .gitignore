@@ -5,3 +5,6 @@ __pycache__/
 build
 datacube.conf
 dist
+/tests/config.yml
+/tests/example-*.yaml
+/tests/request.json
