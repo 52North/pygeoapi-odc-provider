@@ -34,10 +34,28 @@ def test__encode_dataset_type_as_record():
     assert id == product_to_encode.name
 
 
-def test__encode_dataset_type_properties():
+def test__encode_dataset_type_properties_in_collection_view():
     product_to_encode = pickle.load(open('./data/product_1.pickle', 'rb'))
     mock = OpenDataCubeRecordsProviderMock()
     encoded_product_properties = mock._encode_dataset_type_properties(product_to_encode)
+
+    assert encoded_product_properties.get('product') is not None
+    assert encoded_product_properties.get('product') == product_to_encode.name
+    assert encoded_product_properties.get('project') is not None
+    assert encoded_product_properties.get('project') == product_to_encode.metadata_doc.get('project').get('name')
+    assert encoded_product_properties.get('provider') is not None
+    assert encoded_product_properties.get('provider') == product_to_encode.metadata_doc.get('provider').get('name')
+    assert encoded_product_properties.get('category') is not None
+    assert encoded_product_properties.get('category') == product_to_encode.metadata_doc.get('category').get('name')
+    assert encoded_product_properties.get('keywords') is not None
+    assert encoded_product_properties.get('keywords') == product_to_encode.metadata_doc.get('keywords')
+    assert 'associations' not in encoded_product_properties.keys()
+
+
+def test__encode_dataset_type_properties():
+    product_to_encode = pickle.load(open('./data/product_1.pickle', 'rb'))
+    mock = OpenDataCubeRecordsProviderMock()
+    encoded_product_properties = mock._encode_dataset_type_properties(product_to_encode, True)
 
     assert encoded_product_properties.get('product') is not None
     assert encoded_product_properties.get('product') == product_to_encode.name
@@ -92,7 +110,7 @@ def test__encode_dataset_type_properties_landsat8_c2_l2():
     product = pickle.load(open('./data/landsat_product.pickle', 'rb'))
     mock = OpenDataCubeRecordsProviderMock()
 
-    properties = mock._encode_dataset_type_properties(product)
+    properties = mock._encode_dataset_type_properties(product,True)
 
     assert properties is not None
     assert isinstance(properties, dict)

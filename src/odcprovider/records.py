@@ -124,7 +124,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         """
         LOGGER.debug('Fetching identifier {}'.format(identifier))
 
-        return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier))
+        return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier), is_item=True)
 
     def _encode_as_record(self, product: DatasetType) -> dict:
         # product = self.dc.index.products.get_by_name(self.data)
@@ -154,7 +154,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         return properties
 
-    def _encode_dataset_type_as_record(self, product):
+    def _encode_dataset_type_as_record(self, product: str, is_item: bool = False) -> dict:
         bbox = self.dc.wgs84_bbox_of_product(product.name)
         record = {
             'id': product.name,
@@ -169,11 +169,11 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                     [bbox.left, bbox.top]
                 ]]
             },
-            'properties': self._encode_dataset_type_properties(product)
+            'properties': self._encode_dataset_type_properties(product, is_item=is_item)
         }
         return record
 
-    def _encode_dataset_type_properties(self, product):
+    def _encode_dataset_type_properties(self, product: str, is_item: bool = False) -> dict:
         properties = {}
         # properties from metadata doc
         properties_to_skip = ['links']
@@ -184,7 +184,10 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                     properties.update({metadata_key: product.metadata_doc.get(metadata_key).get('name')})
                 elif isinstance(property, list):
                     properties.update({metadata_key: property})
-            elif metadata_key == 'links' and isinstance(product.metadata_doc.get(metadata_key), list) and len(product.metadata_doc.get(metadata_key)) > 0:
+            elif metadata_key == 'links' and \
+                    isinstance(product.metadata_doc.get(metadata_key), list) and \
+                    len(product.metadata_doc.get(metadata_key)) > 0 and \
+                    is_item:
                 # add links to associations entry
                 links = []
                 for link in product.metadata_doc.get(metadata_key):
