@@ -126,34 +126,6 @@ class OpenDataCubeRecordsProvider(BaseProvider):
 
         return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier), is_item=True)
 
-    def _encode_as_record(self, product: DatasetType) -> dict:
-        # product = self.dc.index.products.get_by_name(self.data)
-        #
-        # measurements = list(filter(lambda d: d['product'] in self.data,
-        #                            self.dc.list_measurements(with_pandas=False)))
-        #
-        # features = [{
-        #     'id': product.name,
-        #     'properties': [
-        #
-        #     ]
-        # }]
-        return {
-            'id': product.name,
-            'properties': self._encode_record_properties(product)
-        }
-
-    def _encode_record_properties(self, product):
-        properties = {}
-
-        for property in product.keys():
-            properties.update({property: product.get(property)})
-
-        # properties derived via datacube.utils.documents.DocReader
-        # ToDo verify properties.update(product.metadata.fields)
-
-        return properties
-
     def _encode_dataset_type_as_record(self, product: str, is_item: bool = False) -> dict:
         bbox = self.dc.wgs84_bbox_of_product(product.name)
         record = {
