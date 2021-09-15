@@ -222,7 +222,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # "ValueError: failed to prevent overwriting existing key units in attrs on variable 'time'.
         # This is probably an encoding field used by xarray to describe how a variable is serialized.
         # To proceed, remove this key from the variable's attributes manually."
-        dataset.time.attrs.pop('units', None)
+        # Check for existence to "prevent AttributeError: 'Dataset' object has no attribute 'time'"
+        if dataset.time is not None and dataset.time.attrs is not None and dataset.time.attrs.units is not None:
+            dataset.time.attrs.pop('units', None)
 
         # ------------------------------------- #
         # Return coverage json or native format #
