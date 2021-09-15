@@ -14,7 +14,7 @@
 from __future__ import annotations
 import logging
 import os
-from typing import Any, Union
+from typing import Any
 
 import pickle
 from datacube import Datacube
@@ -24,7 +24,6 @@ from pandas import DataFrame
 
 from .constants import DEFAULT_APP, CACHE_PICKLE
 from .utils import convert_datacube_bbox_to_wgs84
-
 
 
 LOGGER = logging.getLogger(__name__)
@@ -37,37 +36,37 @@ class OdcConnector:
 
     def __init__(self) -> None:
         self.dc = Datacube(app=DEFAULT_APP)
-        self.metadatastore = OdcMetadataStore.instance(self.dc, CACHE_PICKLE)
+        self.metadata_store = OdcMetadataStore.instance(self.dc, CACHE_PICKLE)
 
     def list_product_names(self) -> []:
-        return self.metadatastore.list_product_names();
+        return self.metadata_store.list_product_names()
 
     def get_product_by_id(self, identifier: str) -> DatasetType:
-        return self.metadatastore.get_product_by_id(identifier)
+        return self.metadata_store.get_product_by_id(identifier)
 
     def number_of_bands(self, product: str) -> int:
-        return self.metadatastore.number_of_bands(product)
+        return self.metadata_store.number_of_bands(product)
 
-    def get_datasets_for_product(self, product:str) -> list:
-        return self.metadatastore.find_datasets(product)
+    def get_datasets_for_product(self, product: str) -> list:
+        return self.metadata_store.find_datasets(product)
 
     def list_measurements(self) -> DataFrame:
-        return self.metadatastore.list_measurements()
+        return self.metadata_store.list_measurements()
 
     def bbox_of_product(self, product: str) -> BoundingBox:
-        return self.metadatastore.bbox_of_product(product)
+        return self.metadata_store.bbox_of_product(product)
 
     def get_crs_set(self, product: str) -> set:
-        return self.metadatastore.get_crs_set(product)
+        return self.metadata_store.get_crs_set(product)
 
     def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
-        return self.metadatastore.wgs84_bbox_of_product(product)
+        return self.metadata_store.wgs84_bbox_of_product(product)
 
     def load(self, product: str, **params) -> Any:
         return self.dc.load(product=product, **params)
 
 
-class OdcMetadataStore():
+class OdcMetadataStore:
     """
     Stores not changing metadata of the accessed OpenDataCube instance.
     Implementation uses singleton pattern to improve performance when
@@ -80,16 +79,23 @@ class OdcMetadataStore():
     _instance = None
 
     def __init__(self):
+        self.wgs84_bboxes_by_product_identifier = None
+        self.crs_set_by_product_identifier = None
+        self.product_names = None
+        self.bboxes_by_product_identifier = None
+        self.measurements_complex_without_archived = None
+        self.datasets_by_product_identifier = None
+        self.products_by_identifier = None
         raise RuntimeError('Call instance() instead')
 
     @classmethod
-    def instance(cls, dc:Datacube, cache_pickle: str) -> OdcMetadataStore:
+    def instance(cls, dc: Datacube, cache_pickle: str) -> OdcMetadataStore:
         LOGGER.debug("instance() called")
         if dc is None or not isinstance(dc, Datacube):
             raise RuntimeError('required Datacube object not received')
         if cls._instance is None:
             LOGGER.debug("Creating instance of class '{}'...".format(cls))
-            if os.path.exists(cache_pickle) and os.access(cache_pickle, mode=os.R_OK|os.W_OK):
+            if os.path.exists(cache_pickle) and os.access(cache_pickle, mode=os.R_OK | os.W_OK):
                 # 1 try to load pickle from previous runs
                 LOGGER.debug('from pickle...')
                 cls._instance = pickle.load(open(cache_pickle, 'rb'))
@@ -107,47 +113,47 @@ class OdcMetadataStore():
         return cls._instance
 
     @classmethod
-    def _init_cache(cls, dc:Datacube) -> None:
+    def _init_cache(cls, dc: Datacube) -> None:
         LOGGER.debug("_init_cache() called")
         cls._instance.product_names = [d['name'] for d in dc.list_products(with_pandas=False)]
         cls._instance.products_by_identifier = cls._create_identifier_product_map(dc)
         cls._instance.datasets_by_product_identifier = cls._create_product_dataset_map(dc)
         cls._instance.measurements_complex_without_archived = cls._get_complex_active_measurements(dc)
-        cls._instance.crs_set_by_product_identifier = cls._get_crs_set_for_all_products(dc)
-        cls._instance.bboxes_by_product_identifier = cls._get_bboxes_for_all_products(dc)
-        cls._instance.wgs84_bboxes_by_product_identifier = cls._get_wgs84_bboxs_for_all_products(dc)
+        cls._instance.crs_set_by_product_identifier = cls._get_crs_set_for_all_products()
+        cls._instance.bboxes_by_product_identifier = cls._get_bboxes_for_all_products()
+        cls._instance.wgs84_bboxes_by_product_identifier = cls._get_wgs84_bboxes_for_all_products()
 
     @classmethod
-    def _create_identifier_product_map(cls, dc:Datacube) -> dict:
-        map = dict()
+    def _create_identifier_product_map(cls, dc: Datacube) -> dict:
+        product_map = dict()
         for product in cls._instance.product_names:
-            map[product] = dc.index.products.get_by_name(product)
-        return map
+            product_map[product] = dc.index.products.get_by_name(product)
+        return product_map
 
     @classmethod
-    def _create_product_dataset_map(cls, dc:Datacube) -> dict:
-        map = dict()
+    def _create_product_dataset_map(cls, dc: Datacube) -> dict:
+        dataset_map = dict()
         for product in cls._instance.product_names:
-            map[product] = dc.find_datasets(product=product)
-        return map
+            dataset_map[product] = dc.find_datasets(product=product)
+        return dataset_map
 
     @classmethod
-    def _get_complex_active_measurements(cls, dc:Datacube) -> DataFrame:
+    def _get_complex_active_measurements(cls, dc: Datacube) -> DataFrame:
         return dc.list_measurements(show_archived=False, with_pandas=True)
 
     @classmethod
-    def _get_crs_set_for_all_products(cls, dc:Datacube) -> dict:
-        map = dict()
+    def _get_crs_set_for_all_products(cls) -> dict:
+        crs_set_map = dict()
         for product in cls._instance.product_names:
             crs_set = set()
             for dataset in cls._instance.datasets_by_product_identifier[product]:
                 crs_set.add(dataset.crs)
-            map[product] = crs_set
-        return map
+            crs_set_map[product] = crs_set
+        return crs_set_map
 
     @classmethod
-    def _get_bboxes_for_all_products(cls, dc:Datacube) -> dict:
-        map = dict()
+    def _get_bboxes_for_all_products(cls) -> dict:
+        bbox_map = dict()
         for product in cls._instance.product_names:
             crs_set = cls._instance.crs_set_by_product_identifier[product]
             if len(crs_set) > 1:
@@ -163,12 +169,12 @@ class OdcMetadataStore():
                 else:
                     bbs.append(convert_datacube_bbox_to_wgs84(dataset.bounds, str(dataset.crs)))
 
-            map[product] = bbox_union(bbs)
+            bbox_map[product] = bbox_union(bbs)
 
-        return map
+        return bbox_map
 
     @classmethod
-    def _get_wgs84_bboxs_for_all_products(cls, dc: Datacube) -> dict:
+    def _get_wgs84_bboxes_for_all_products(cls) -> dict:
         wgs84_bboxes = {}
         wgs84 = CRS('epsg:4326')
 
@@ -192,7 +198,7 @@ class OdcMetadataStore():
         return wgs84_bboxes
 
     def list_product_names(self) -> list:
-        return self.product_names;
+        return self.product_names
 
     def get_product_by_id(self, identifier: str) -> DatasetType:
         self.check_product_parameter(identifier)
@@ -202,7 +208,7 @@ class OdcMetadataStore():
         self.check_product_parameter(product)
         return len(self.products_by_identifier[product].measurements)
 
-    def find_datasets(self, product: str) -> dict:
+    def find_datasets(self, product: str) -> list:
         self.check_product_parameter(product)
         return self.datasets_by_product_identifier[product]
 
@@ -221,7 +227,7 @@ class OdcMetadataStore():
         if product not in self.product_names:
             raise ValueError("product MUST be in datacube")
 
-    def get_crs_set(self, product: str) -> BoundingBox:
+    def get_crs_set(self, product: str) -> set:
         self.check_product_parameter(product)
         return self.crs_set_by_product_identifier[product]
 
