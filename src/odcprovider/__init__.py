@@ -13,5 +13,4 @@
 #
 # =================================================================
 from .coverages import OpenDataCubeCoveragesProvider
-from .processes import *
 from .records import OpenDataCubeRecordsProvider
