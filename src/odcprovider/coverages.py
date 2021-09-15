@@ -230,10 +230,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if len(bands) == 0:
             bands = list(dataset.keys())  # select all bands
 
-        out_meta = {'bbox': [minx, miny, maxx, maxy],
-                    'width': abs((maxx - minx) / self._coverage_properties['resx']),
-                    'height': abs((maxy - miny) / self._coverage_properties['resy']),
-                    'bands': bands}
+        out_meta = {
+            'bbox': [minx, miny, maxx, maxy],
+            'width': abs((maxx - minx) / self._coverage_properties['resx']),
+            'height': abs((maxy - miny) / self._coverage_properties['resy']),
+            'bands': bands
+        }
 
         if self.options is not None:
             LOGGER.info('Adding dataset options')
