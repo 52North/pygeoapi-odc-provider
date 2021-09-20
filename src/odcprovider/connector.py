@@ -13,6 +13,7 @@
 # =================================================================
 from __future__ import annotations
 import logging
+from pathlib import Path
 import os
 from typing import Any, Union
 
@@ -89,10 +90,11 @@ class OdcMetadataStore():
             raise RuntimeError('required Datacube object not received')
         if cls._instance is None:
             LOGGER.debug("Creating instance of class '{}'...".format(cls))
-            if os.path.exists(cache_pickle) and os.access(cache_pickle, mode=os.R_OK|os.W_OK):
+            pickle_path = Path(cache_pickle).resolve()
+            if os.path.exists(pickle_path) and os.access(pickle_path, mode=os.R_OK|os.W_OK):
                 # 1 try to load pickle from previous runs
                 LOGGER.debug('from pickle...')
-                cls._instance = pickle.load(open(cache_pickle, 'rb'))
+                cls._instance = pickle.load(open(pickle_path, 'rb'))
                 LOGGER.debug('...DONE.')
             else:
                 # 2 init from datacube
@@ -100,7 +102,7 @@ class OdcMetadataStore():
                 cls._instance = cls.__new__(cls)
                 # init variables
                 cls._init_cache(dc)
-                pickle.dump(cls._instance, open(cache_pickle, 'wb'))
+                pickle.dump(cls._instance, open(pickle_path, 'wb'))
                 LOGGER.debug('...DONE.')
         else:
             LOGGER.debug("Instance of class '{}' already existing".format(cls))

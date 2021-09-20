@@ -22,7 +22,7 @@ BBOX_COORD_PRECISION = "{:.4f}"
 Format string for BoundBox coordinates. Limits float output to four decimal places
 """
 
-CACHE_PICKLE = '/ogc-tb-17/DATA/odc_cache.pickle'
+CACHE_PICKLE = 'ogc-tb-17/DATA/odc_cache.pickle'
 """
 Path to ODC cache pickle file
 
