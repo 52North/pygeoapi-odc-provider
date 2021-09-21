@@ -17,6 +17,8 @@ import os
 from typing import Any
 
 import pickle
+
+import xarray
 from datacube import Datacube
 from datacube.model import DatasetType
 from datacube.utils.geometry import bbox_union, BoundingBox, CRS
@@ -62,7 +64,7 @@ class OdcConnector:
     def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
         return self.metadata_store.wgs84_bbox_of_product(product)
 
-    def load(self, product: str, **params) -> Any:
+    def load(self, product: str, **params) -> xarray.Dataset:
         return self.dc.load(product=product, **params)
 
 
