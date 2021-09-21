@@ -164,10 +164,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             miny = subsets[y][0]
             maxy = subsets[y][1]
 
-        if self.crs_obj.projected:
-            max_allowed_delta = 7500
-        else:
-            max_allowed_delta = 0.125
+        if self.data != 'landsat8_c2_l2':
+            if self.crs_obj.projected:
+                max_allowed_delta = 7500
+            else:
+                max_allowed_delta = 0.125
 
         # ToDo consider resolution in next development iteration
 
