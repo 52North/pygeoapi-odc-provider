@@ -207,7 +207,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             params['measurements'] = bands
 
         # ToDo: enable output in different crs? Does API Coverages support this?
-        # ToDo: check if reprojection is necessary
+        # ToDo: check if re-projection is necessary
+        # ToDo: if product has more than one crs, output crs should be in WGS84!?
         reproj = False
         if reproj:
             params['resolution'] = (self._coverage_properties['resy'], self._coverage_properties['resx'])
