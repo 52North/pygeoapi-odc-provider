@@ -164,12 +164,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             miny = subsets[y][0]
             maxy = subsets[y][1]
 
-        if self.data != 'landsat8_c2_l2':
-            if self.crs_obj.projected:
-                max_allowed_delta = 7500
-            else:
-                max_allowed_delta = 0.125
-
         # ToDo consider resolution in next development iteration
 
         if minx > maxx or miny > maxy:
@@ -177,15 +171,21 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.warning(msg)
             raise ProviderQueryError(msg)
 
-        if maxx - minx > max_allowed_delta:
-            msg = 'spatial subsetting to large {}. please request max {}°'.format(maxx - minx, max_allowed_delta)
-            LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+        if self.data != 'landsat8_c2_l2':
+            if self.crs_obj.projected:
+                max_allowed_delta = 7500
+            else:
+                max_allowed_delta = 0.125
 
-        if maxy - miny > max_allowed_delta:
-            msg = 'spatial subsetting to large {}. please request max {}°'.format(maxy - miny, max_allowed_delta)
-            LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+            if maxx - minx > max_allowed_delta:
+                msg = 'spatial subsetting to large {}. please request max {}'.format(maxx - minx, max_allowed_delta)
+                LOGGER.warning(msg)
+                raise ProviderQueryError(msg)
+
+            if maxy - miny > max_allowed_delta:
+                msg = 'spatial subsetting to large {}. please request max {}'.format(maxy - miny, max_allowed_delta)
+                LOGGER.warning(msg)
+                raise ProviderQueryError(msg)
 
         # ------------------------------ #
         # Parameters for datacube.load() #
