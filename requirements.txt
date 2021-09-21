@@ -6,4 +6,5 @@ pygeoapi
 pyproj
 PyYAML
 rasterio
+scipy
 tinydb
