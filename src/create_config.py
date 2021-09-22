@@ -112,35 +112,15 @@ def _create_resource_from_odc_product(product: DatasetType, bbox: BoundingBox) -
                 'crs': 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
             }
         },
-        'providers': [
-            {
-                'type': 'coverage',
-                'name': 'odcprovider.OpenDataCubeCoveragesProvider',
-                'data': product.name,
-                'format': {
-                    'name': 'json',
-                    'mimetype': 'application/json'
-                }
-            },
-            {
-                'type': 'coverage',
-                'name': 'odcprovider.OpenDataCubeCoveragesProvider',
-                'data': product.name,
-                'format': {
-                    'name': 'NetCDF',
-                    'mimetype': 'application/netcdf'
-                }
-            },
-            {
-                'type': 'coverage',
-                'name': 'odcprovider.OpenDataCubeCoveragesProvider',
-                'data': product.name,
-                'format': {
-                    'name': 'GeoTIFF',
-                    'mimetype': 'application/geotiff'
-                }
+        'providers': [{
+            'type': 'coverage',
+            'name': 'odcprovider.OpenDataCubeCoveragesProvider',
+            'data': product.name,
+            'format': {
+                'name': format_name,
+                'mimetype': 'application/{}'.format(format_name.lower())
             }
-        ],
+        }],
     }
 
     return resource_dict
