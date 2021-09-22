@@ -256,6 +256,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             return self.gen_covjson(out_meta, dataset)
 
         elif format_.lower() == 'geotiff':
+            LOGGER.info('Returning data as GeoTIFF')
             # ToDo: check if there is more than one time slice
             out_meta['driver'] = 'GTiff'
             out_meta['crs'] = self.crs_obj.to_epsg()
@@ -269,13 +270,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                                            self._coverage_properties['transform'][3],
                                            self._coverage_properties['transform'][4],
                                            self._coverage_properties['transform'][5])
-
+            LOGGER.debug('Writing to in-memory file')
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
                     # input is expected as (bands, rows, cols)
                     dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))
-
-                LOGGER.info('Returning data as GeoTIFF')
+                LOGGER.debug('Finished writing to in-memory file')
                 return memfile.read()
 
         else:
