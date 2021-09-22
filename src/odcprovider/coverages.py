@@ -215,7 +215,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             # resampling := 'nearest' is the default value
             # params['resampling'] = 'nearest'
 
-        LOGGER.debug("RAW params for dc.load:\n{}".format(json.dumps(params, indent=4)))
+        LOGGER.debug('RAW params for dc.load:\n{}'.format(json.dumps(params, indent=4)))
         # ---------------------- #
         # Load data via datacube #
         # ---------------------- #
@@ -223,6 +223,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # See https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html
         #
         dataset = self.dc.load(product=self.data, **params)
+        LOGGER.debug('Received data from ODC')
 
         # Use 'dataset.time.attrs.pop('units', None)' to prevent the following error:
         # "ValueError: failed to prevent overwriting existing key units in attrs on variable 'time'.
@@ -250,6 +251,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.info('Adding dataset options')
             for key, value in self.options.items():
                 out_meta[key] = value
+
+        LOGGER.debug('Processed dataset')
 
         if format_ == 'json':
             LOGGER.info('Creating output in CoverageJSON')
