@@ -209,13 +209,13 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ToDo: enable output in different crs? Does API Coverages support this?
         # ToDo: check if re-projection is necessary
         # ToDo: if product has more than one crs, output crs should be in WGS84!?
-        reproj = False
-        if reproj:
+        if self.dc.get_product_by_id(self.data).grid_spec is None:
             params['resolution'] = (self._coverage_properties['resy'], self._coverage_properties['resx'])
-            params['output_crs'] = "epsg:{}".format(self.crs_obj.to_epsg())
+            params['output_crs'] = "epsg:4326"
             # resampling := 'nearest' is the default value
             # params['resampling'] = 'nearest'
 
+        LOGGER.debug("RAW params for dc.load:\n{}".format(json.dumps(params, indent=4)))
         # ---------------------- #
         # Load data via datacube #
         # ---------------------- #
