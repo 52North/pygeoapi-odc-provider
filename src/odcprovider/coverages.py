@@ -133,7 +133,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if len(bbox) > 0:
             minxbox, minybox, maxxbox, maxybox = bbox
 
-            crs_src = CRS.from_epsg(4326)  # fixed by specification
+            # fixed by specification
+            crs_src = CRS.from_epsg(4326)
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
 
             if crs_src == crs_dest:
@@ -212,11 +213,15 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if reproj:
             params['resolution'] = (self._coverage_properties['resy'], self._coverage_properties['resx'])
             params['output_crs'] = "epsg:{}".format(self.crs_obj.to_epsg())
+            # resampling := 'nearest' is the default value
             # params['resampling'] = 'nearest'
 
         # ---------------------- #
         # Load data via datacube #
         # ---------------------- #
+        #
+        # See https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html
+        #
         dataset = self.dc.load(product=self.data, **params)
 
         # Use 'dataset.time.attrs.pop('units', None)' to prevent the following error:
