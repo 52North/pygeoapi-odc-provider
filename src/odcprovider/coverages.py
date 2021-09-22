@@ -20,7 +20,6 @@ import logging
 import json
 # ToDo move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
-from numpy import NaN
 from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
