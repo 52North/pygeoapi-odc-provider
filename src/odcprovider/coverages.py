@@ -61,12 +61,15 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         LOGGER.info('Start initializing product {}'.format(self.data))
 
         try:
-            self.crs_obj = None  # datacube.utils.geometry.CRS
-            bbox = self._get_bbox()  # datacube.utils.geometry.BoundingBox
+            # datacube.utils.geometry.CRS
+            self.crs_obj = None
+            # datacube.utils.geometry.BoundingBox
+            bbox = self._get_bbox()
             self._coverage_properties = self._get_coverage_properties(bbox)
             self._measurement_properties = self._get_measurement_properties()
             self.native_format = provider_def['format']['name']
-            # axes, crs and num_bands is need for coverage providers (see https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/base.py#L65)
+            # axes, crs and num_bands is need for coverage providers
+            # (see https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/base.py#L65)
             self.axes = self._coverage_properties['axes']
             self.crs = self._coverage_properties['crs_uri']
             self.num_bands = self._coverage_properties['num_bands']
@@ -150,9 +153,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                 minx, miny = t.transform(minxbox, minybox)
                 maxx, maxy = t.transform(maxxbox, maxybox)
 
-                LOGGER.info('Source coordinates: {}'.format(
+                LOGGER.info('Source coordinates in {}: {}'.format(
+                    crs_src.to_epsg(),
                     [minxbox, minybox, maxxbox, maxybox]))
-                LOGGER.info('Destination coordinates: {}'.format(
+                LOGGER.info('Destination coordinates in {}: {}'.format(
+                    crs_dest.to_epsg(),
                     [minx, miny, maxx, maxy]))
 
         elif (self._coverage_properties['x_axis_label'] in subsets and
@@ -508,17 +513,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             resx = None
             resy = None
 
-        # spatial_dimensions = product_metadata.iloc[0]['spatial_dimensions']
-        # if isinstance(spatial_dimensions, tuple):
-        #     # ToDo: check axis order!
-        #     dim_we = spatial_dimensions[1]
-        #     dim_ns = spatial_dimensions[0]
-        # else:
-        #     dim_we = None
-        #     dim_ns = None
-
-        num_bands = self.dc.number_of_bands(self.data)
-
         # ---------------- #
         # Dataset metadata #
         # ---------------- #
@@ -558,11 +552,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         transform = transform_list[0]
 
-        # if dim_we is None:
-        #     dim_we = dim_list[1]
-        # if dim_ns is None:
-        #     dim_ns = dim_list[0]
-
         # -------------- #
         # Set properties #
         # -------------- #
@@ -583,7 +572,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             'resx': resx,
             'resy': resy,
             'transform': transform,
-            'num_bands': num_bands,
+            'num_bands': (self.dc.number_of_bands(self.data)),
             # 'tags': 'tags'
         }
 
