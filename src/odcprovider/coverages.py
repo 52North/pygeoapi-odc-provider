@@ -137,6 +137,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             crs_src = CRS.from_epsg(4326)
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
 
+            LOGGER.debug('Source EPSG: {}'.format(crs_src.to_epsg()))
+            LOGGER.debug('Target EPSG: {}'.format(crs_dest.to_epsg()))
+
             if crs_src == crs_dest:
                 LOGGER.info('source bbox CRS and data CRS are the same')
             else:
