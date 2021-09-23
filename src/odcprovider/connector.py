@@ -20,7 +20,7 @@ import pickle
 
 import xarray
 from datacube import Datacube
-from datacube.model import DatasetType
+from datacube.model import DatasetType, Dataset
 from datacube.utils.geometry import bbox_union, BoundingBox, CRS
 from pandas import DataFrame
 
@@ -49,7 +49,7 @@ class OdcConnector:
     def number_of_bands(self, product: str) -> int:
         return self.metadata_store.number_of_bands(product)
 
-    def get_datasets_for_product(self, product: str) -> list:
+    def get_datasets_for_product(self, product: str) -> list[Dataset]:
         return self.metadata_store.find_datasets(product)
 
     def list_measurements(self) -> DataFrame:
@@ -60,6 +60,9 @@ class OdcConnector:
 
     def get_crs_set(self, product: str) -> set:
         return self.metadata_store.get_crs_set(product)
+
+    def get_resolution_set(self, product: str) -> set:
+        return self.metadata_store.get_resolution_set(product)
 
     def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
         return self.metadata_store.wgs84_bbox_of_product(product)
@@ -83,6 +86,7 @@ class OdcMetadataStore:
     def __init__(self):
         self.wgs84_bboxes_by_product_identifier = None
         self.crs_set_by_product_identifier = None
+        self.resolution_set_by_product_identifier = None
         self.product_names = None
         self.bboxes_by_product_identifier = None
         self.measurements_complex_without_archived = None
@@ -122,6 +126,7 @@ class OdcMetadataStore:
         cls._instance.datasets_by_product_identifier = cls._create_product_dataset_map(dc)
         cls._instance.measurements_complex_without_archived = cls._get_complex_active_measurements(dc)
         cls._instance.crs_set_by_product_identifier = cls._get_crs_set_for_all_products()
+        cls._instance.resolution_set_by_product_identifier = cls._get_resolution_set_for_all_products()
         cls._instance.bboxes_by_product_identifier = cls._get_bboxes_for_all_products()
         cls._instance.wgs84_bboxes_by_product_identifier = cls._get_wgs84_bboxes_for_all_products()
 
@@ -152,6 +157,22 @@ class OdcMetadataStore:
                 crs_set.add(dataset.crs)
             crs_set_map[product] = crs_set
         return crs_set_map
+
+    @classmethod
+    def _get_resolution_set_for_all_products(cls) -> dict:
+        resolution_set_map = dict()
+        for product in cls._instance.product_names:
+            resolution_set = set()
+            for dataset in cls._instance.datasets_by_product_identifier[product]:
+                # Add (resolution x, resolution y) to set for each dataset
+                # Keep sign because Open Data Cube needs this information when loading data
+                # ToDo: There may be other grids than the default grid,
+                #       see https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html#eo3-format.
+                #       These should be included later.
+                resolution_set.add((dataset.metadata_doc['grids']['default']['transform'][0],
+                                    dataset.metadata_doc['grids']['default']['transform'][4]))
+            resolution_set_map[product] = resolution_set
+        return resolution_set_map
 
     @classmethod
     def _get_bboxes_for_all_products(cls) -> dict:
@@ -232,6 +253,10 @@ class OdcMetadataStore:
     def get_crs_set(self, product: str) -> set:
         self.check_product_parameter(product)
         return self.crs_set_by_product_identifier[product]
+
+    def get_resolution_set(self, product: str) -> set:
+        self.check_product_parameter(product)
+        return self.resolution_set_by_product_identifier[product]
 
     def wgs84_bbox_of_product(self, product: str) -> BoundingBox:
         self.check_product_parameter(product)
