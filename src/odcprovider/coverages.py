@@ -30,11 +30,17 @@ from rasterio import Affine
 from rasterio.io import MemoryFile
 
 from .connector import OdcConnector
+from .utils import meter2degree
 
 import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
+CAST_MAP = {
+    'uint8': 'int16',
+    'uint16': 'int32',
+    'uint32': 'int64'
+}
 
 class OpenDataCubeCoveragesProvider(BaseProvider):
     """OpenDataCube Provider
@@ -61,9 +67,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         try:
             # datacube.utils.geometry.CRS
             self.crs_obj = None
+            self.native_format = provider_def['format']['name']
             self._coverage_properties = self._get_coverage_properties(self._get_bbox())
             self._measurement_properties = self._get_measurement_properties()
-            self.native_format = provider_def['format']['name']
             # axes, crs and num_bands is need for coverage providers
             # (see https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/base.py#L65)
             self.axes = self._coverage_properties['axes']
@@ -202,15 +208,14 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         #   'latitude' or 'lat' or 'y' / 'longitude' or 'lon' or 'long' or 'x'
         # - See for details on parameters and load() method:
         #   https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html#datacube-datacube-load
-        # ToDo: align and resolution may need to be transformed between deg and m!
         params = {
-            "crs": "epsg:{}".format(self.crs_obj.to_epsg()),
+            'crs': 'epsg:{}'.format(self.crs_obj.to_epsg()),
             'x': (minx, maxx),
             'y': (miny, maxy),
             "align": (abs(self._coverage_properties['resy'] / 2),
                       abs(self._coverage_properties['resx'] / 2)),
             'resolution': (self._coverage_properties['resy'], self._coverage_properties['resx']),
-            'output_crs': self.crs_obj.to_epsg(),
+            'output_crs': 'epsg:{}'.format(self.crs_obj.to_epsg()),
             # 'resampling': 'nearest' # nearest is the default value
         }
 
@@ -261,18 +266,16 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.info('Returning data as GeoTIFF')
             # ToDo: check if there is more than one time slice
             out_meta['driver'] = 'GTiff'
-            out_meta['crs'] = self.crs_obj.to_epsg()  # ToDo: use correct crs
+            out_meta['crs'] = self.crs_obj.to_epsg()
             out_meta['dtype'] = self._measurement_properties[0]['dtype']
             out_meta['nodata'] = self._measurement_properties[0]['nodata']
             out_meta['count'] = len(bands)
-            # ToDo: Coordinates seem to be shifted by resolution/2
-            # ToDo: REVIEW: Transform ist pro CRS unterschiedlich und wird z.Zt. falsch gesetzt, da nur vom ersten Dataset verwendet
-            out_meta['transform'] = Affine(self._coverage_properties['transform'][0],
-                                           self._coverage_properties['transform'][1],
-                                           self._coverage_properties['transform'][2],
-                                           self._coverage_properties['transform'][3],
-                                           self._coverage_properties['transform'][4],
-                                           self._coverage_properties['transform'][5])
+            out_meta['transform'] = Affine(self._coverage_properties['resx'],
+                                           0.0,
+                                           minx,
+                                           0.0,
+                                           self._coverage_properties['resy'],
+                                           maxy)
             LOGGER.debug('Writing to in-memory file')
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
@@ -283,10 +286,21 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         else:
             LOGGER.info('Returning data as netCDF')
+            # ToDo: what if different measurements have different dtypes?
+            for data_var in dataset.data_vars:
+                dtype = dataset[data_var].dtype.name
+                break
+
+            # scipy cannot save arrays with unsigned type to netCDF
+            if dtype.startswith('u'):
+                dataset = dataset.astype(CAST_MAP[dtype], copy=False)
+
             # Note: "If no path is provided, this function returns the resulting netCDF file as bytes; in this case,
             # we need to use scipy, which does not support netCDF version 4 (the default format becomes NETCDF3_64BIT)."
             # (http://xarray.pydata.org/en/stable/generated/xarray.Dataset.to_netcdf.html)
-            # ToDo use memfile to use netcdf4!?
+            # ToDo: implement netCDF version 4 option using in-memory file with lib netCDF4
+            #       (http://unidata.github.io/netcdf4-python/#in-memory-diskless-datasets)
+            #        see also https://stackoverflow.com/questions/46433812/simple-conversion-of-netcdf4-dataset-to-xarray-dataset
             return dataset.to_netcdf()
 
     def gen_covjson(self, metadata, dataset):
@@ -372,6 +386,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
          Provide coverage domainset
          :returns: CIS JSON object of domainset metadata
          """
+
+        # The grid may be very large and contain a lot of nodata values.
+        # Does the (draft) spec of API Coverages provide means to indicate where useful data is actually?
 
         domainset = {
             'type': 'DomainSetType',
@@ -475,10 +492,10 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ------------------------------- #
         crs_set = self.dc.get_crs_set(self.data)
         resolution_set = self.dc.get_resolution_set(self.data)
-        bbox = self.dc.bbox_of_product(self.data)
+        bbox = self._get_bbox()
 
         if len(crs_set) > 1:
-            LOGGER.warning("Product {} has datasets with different coordinate reference systems."
+            LOGGER.warning("Product {} has datasets with different coordinate reference systems. "
                            "All datasets will be assumed to have WGS84 as native crs from now on.".format(self.data))
             self.crs_obj = CRS_DATACUBE('epsg:4326')
         else:
@@ -491,10 +508,23 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             raise ProviderQueryError(msg)
         else:
             res = next(iter(resolution_set))
-            resx = res[0]
-            resy = res[1]
+            resx = resx_native = res[0]
+            resy = resy_native = res[1]
+            # Resolution has to be converted if ODC storage crs and collection crs differ and ODC storage crs is projected.
+            # We assume there is no mixture of geographic and projected reference systems in the datasets.
+            # Conversion:
+            # 1° difference in latitude and longitude - for longitude this is only true at the equator;
+            # the distance is short when moving towards the poles - is approx. 111 km. We apply a simple conversion
+            # using the factor 100,000 to obtain a reasonable grid.
+            # ToDo: review the conversion from meter to degree
+            if len(crs_set) > 1 and next(iter(crs_set)).projected:
+                resx = meter2degree(resx_native)
+                resy = meter2degree(resy_native)
+                LOGGER.warning("Using WGS84 instead of storage crs. "
+                               "Resolution is converted from {} to {}".format((resx_native, resy_native), (resx, resy)))
 
-        # ToDo: support different crs/resolution for different datasets including reprojection and resampling
+        # ToDo: support different crs/resolution for different datasets including reprojection
+        #       and resampling (need to wait for API Coverages spec extensions)
 
         # -------------- #
         # Set properties #
@@ -542,10 +572,15 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         properties = []
         for row in range(0, len(measurement_metadata)):
+            # for netCDF unsigned dtypes are not possible at the moment due to limitations of xarray.Dataset.to_netcdf()
+            dtype = measurement_metadata.iloc[row]['dtype']
+            if self.native_format.lower() == 'netcdf' and dtype.startswith('u'):
+                dtype = CAST_MAP[dtype]
+
             properties.append({
                 "id": row + 1,
                 "name": measurement_metadata.iloc[row]['name'],
-                "dtype": measurement_metadata.iloc[row]['dtype'],
+                "dtype": dtype,
                 "nodata": measurement_metadata.iloc[row]['nodata'],
                 "unit": measurement_metadata.iloc[row]['units'],
                 "aliases": measurement_metadata.iloc[row]['aliases']

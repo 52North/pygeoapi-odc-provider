@@ -62,3 +62,7 @@ def convert_datacube_bbox_to_geojson_wgs84_polygon(bbox: BoundingBox, in_crs: st
 
 def apply_precision(coord: float) -> float:
     return float(BBOX_COORD_PRECISION.format(coord))
+
+
+def meter2degree(m):
+    return m / 100000
