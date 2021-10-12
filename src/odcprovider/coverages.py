@@ -30,11 +30,17 @@ from rasterio import Affine
 from rasterio.io import MemoryFile
 
 from .connector import OdcConnector
+from .utils import meter2degree
 
 import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
+CAST_MAP = {
+    'uint8': 'int16',
+    'uint16': 'int32',
+    'uint32': 'int64'
+}
 
 class OpenDataCubeCoveragesProvider(BaseProvider):
     """OpenDataCube Provider
@@ -52,21 +58,20 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         self.dc = OdcConnector()
 
-        products = self.dc.list_product_names()
-
-        if self.data not in products:
+        if self.data not in self.dc.list_product_names():
             raise ProviderGenericError("Configured product '{}' is not contained in OpenDataCube instance"
                                        .format(self.data))
 
         LOGGER.info('Start initializing product {}'.format(self.data))
 
         try:
-            self.crs_obj = None  # datacube.utils.geometry.CRS
-            bbox = self._get_bbox()  # datacube.utils.geometry.BoundingBox
-            self._coverage_properties = self._get_coverage_properties(bbox)
-            self._measurement_properties = self._get_measurement_properties()
+            # datacube.utils.geometry.CRS
+            self.crs_obj = None
             self.native_format = provider_def['format']['name']
-            # axes, crs and num_bands is need for coverage providers (see https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/base.py#L65)
+            self._coverage_properties = self._get_coverage_properties(self._get_bbox())
+            self._measurement_properties = self._get_measurement_properties()
+            # axes, crs and num_bands is need for coverage providers
+            # (see https://github.com/geopython/pygeoapi/blob/master/pygeoapi/provider/base.py#L65)
             self.axes = self._coverage_properties['axes']
             self.crs = self._coverage_properties['crs_uri']
             self.num_bands = self._coverage_properties['num_bands']
@@ -131,28 +136,36 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # Spatial subset #
         # -------------- #
         if len(bbox) > 0:
-            minxbox, minybox, maxxbox, maxybox = bbox
 
-            crs_src = CRS.from_epsg(4326)  # fixed by specification
+            # fixed by specification
+            crs_src = CRS.from_epsg(4326)
             crs_dest = CRS.from_epsg(self.crs_obj.to_epsg())
+
+            LOGGER.debug('Source EPSG: {}'.format(crs_src.to_epsg()))
+            LOGGER.debug('Target EPSG: {}'.format(crs_dest.to_epsg()))
 
             if crs_src == crs_dest:
                 LOGGER.info('source bbox CRS and data CRS are the same')
+
+                minx, miny, maxx, maxy = bbox
             else:
                 LOGGER.info('source bbox CRS and data CRS are different')
                 LOGGER.info('reprojecting bbox into native coordinates')
 
+                minxbox, minybox, maxxbox, maxybox = bbox
                 t = Transformer.from_crs(crs_src, crs_dest, always_xy=True)
                 minx, miny = t.transform(minxbox, minybox)
                 maxx, maxy = t.transform(maxxbox, maxybox)
 
-                LOGGER.info('Source coordinates: {}'.format(
+                LOGGER.info('Source coordinates in {}: {}'.format(
+                    crs_src.to_epsg(),
                     [minxbox, minybox, maxxbox, maxybox]))
-                LOGGER.info('Destination coordinates: {}'.format(
+                LOGGER.info('Destination coordinates in {}: {}'.format(
+                    crs_dest.to_epsg(),
                     [minx, miny, maxx, maxy]))
 
         elif (self._coverage_properties['x_axis_label'] in subsets and
-                self._coverage_properties['y_axis_label'] in subsets):
+              self._coverage_properties['y_axis_label'] in subsets):
             LOGGER.info('Creating spatial subset')
 
             x = self._coverage_properties['x_axis_label']
@@ -163,11 +176,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             miny = subsets[y][0]
             maxy = subsets[y][1]
 
-        if self.crs_obj.projected:
-            max_allowed_delta = 7500
-        else:
-            max_allowed_delta = 0.125
-
         # ToDo consider resolution in next development iteration
 
         if minx > maxx or miny > maxy:
@@ -175,102 +183,124 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             LOGGER.warning(msg)
             raise ProviderQueryError(msg)
 
-        if maxx - minx > max_allowed_delta:
-            msg = 'spatial subsetting to large {}. please request max {}°'.format(maxx - minx, max_allowed_delta)
-            LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+        if self.data != 'landsat8_c2_l2':
+            if self.crs_obj.projected:
+                max_allowed_delta = 7500
+            else:
+                max_allowed_delta = 0.125
 
-        if maxy - miny > max_allowed_delta:
-            msg = 'spatial subsetting to large {}. please request max {}°'.format(maxy - miny, max_allowed_delta)
-            LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+            if maxx - minx > max_allowed_delta:
+                msg = 'spatial subsetting to large {}. please request max {}'.format(maxx - minx, max_allowed_delta)
+                LOGGER.warning(msg)
+                raise ProviderQueryError(msg)
 
-        # ------------------------------ #
-        # Parameters for datacube.load() #
-        # ------------------------------ #
+            if maxy - miny > max_allowed_delta:
+                msg = 'spatial subsetting to large {}. please request max {}'.format(maxy - miny, max_allowed_delta)
+                LOGGER.warning(msg)
+                raise ProviderQueryError(msg)
 
-        # Note: resolution and align expect the following coordinate order: (y, x)
-        # Note: datacube.Datacube.load accepts all of the following parameters for spatial subsets
-        #       independent of the crs: 'latitude' or 'lat' or 'y' / 'longitude' or 'lon' or 'long' or 'x'
+        # ---------------------- #
+        # Load data via datacube #
+        # ---------------------- #
+        # Note:
+        # - resolution and align expect the following coordinate order: (y, x)
+        # - datacube.Datacube.load accepts all of the following parameters for spatial subsets independent of the crs:
+        #   'latitude' or 'lat' or 'y' / 'longitude' or 'lon' or 'long' or 'x'
+        # - See for details on parameters and load() method:
+        #   https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html#datacube-datacube-load
         params = {
-            "crs": "epsg:{}".format(self.crs_obj.to_epsg()),
-            "align": (abs(self._coverage_properties['resy'] / 2),
-                      abs(self._coverage_properties['resx'] / 2)),
-            # in the units of output_crs (if output_crs is not supplied, crs of stored data is used)
+            'crs': 'epsg:{}'.format(self.crs_obj.to_epsg()),
             'x': (minx, maxx),
             'y': (miny, maxy),
+            "align": (abs(self._coverage_properties['resy'] / 2),
+                      abs(self._coverage_properties['resx'] / 2)),
+            'resolution': (self._coverage_properties['resy'], self._coverage_properties['resx']),
+            'output_crs': 'epsg:{}'.format(self.crs_obj.to_epsg()),
+            # 'resampling': 'nearest' # nearest is the default value
         }
 
         if len(bands) > 0:
             params['measurements'] = bands
 
         # ToDo: enable output in different crs? Does API Coverages support this?
-        # ToDo: check if reprojection is necessary
-        reproj = False
-        if reproj:
-            params['resolution'] = (self._coverage_properties['resy'], self._coverage_properties['resx'])
-            params['output_crs'] = "epsg:{}".format(self.crs_obj.to_epsg())
-            # params['resampling'] = 'nearest'
+        # ToDo: check if re-projection is necessary
 
-        # ---------------------- #
-        # Load data via datacube #
-        # ---------------------- #
+        LOGGER.debug('RAW params for dc.load:\n{}'.format(json.dumps(params, indent=4)))
         dataset = self.dc.load(product=self.data, **params)
+        LOGGER.debug('Received data from ODC')
 
         # Use 'dataset.time.attrs.pop('units', None)' to prevent the following error:
         # "ValueError: failed to prevent overwriting existing key units in attrs on variable 'time'.
         # This is probably an encoding field used by xarray to describe how a variable is serialized.
         # To proceed, remove this key from the variable's attributes manually."
-        dataset.time.attrs.pop('units', None)
+        # Check for existence to "prevent AttributeError: 'Dataset' object has no attribute 'time'"
+        if hasattr(dataset, 'time') and dataset.time is not None and hasattr(dataset.time, 'attrs') and \
+                dataset.time.attrs is not None:
+            dataset.time.attrs.pop('units', None)
 
-        # ------------------------------------- #
-        # Return coverage json or native format #
-        # ------------------------------------- #
+        # ----------------- #
+        #    Return data    #
+        # ----------------- #
         if len(bands) == 0:
             bands = list(dataset.keys())  # select all bands
 
-        out_meta = {'bbox': [minx, miny, maxx, maxy],
-                    'width': abs((maxx - minx) / self._coverage_properties['resx']),
-                    'height': abs((maxy - miny) / self._coverage_properties['resy']),
-                    'bands': bands}
+        out_meta = {
+            'bbox': [minx, miny, maxx, maxy],
+            'width': abs((maxx - minx) / self._coverage_properties['resx']),
+            'height': abs((maxy - miny) / self._coverage_properties['resy']),
+            'bands': bands
+        }
 
         if self.options is not None:
             LOGGER.info('Adding dataset options')
             for key, value in self.options.items():
                 out_meta[key] = value
 
+        LOGGER.debug('Processed dataset')
+
         if format_ == 'json':
             LOGGER.info('Creating output in CoverageJSON')
             return self.gen_covjson(out_meta, dataset)
 
         elif format_.lower() == 'geotiff':
+            LOGGER.info('Returning data as GeoTIFF')
             # ToDo: check if there is more than one time slice
             out_meta['driver'] = 'GTiff'
             out_meta['crs'] = self.crs_obj.to_epsg()
             out_meta['dtype'] = self._measurement_properties[0]['dtype']
             out_meta['nodata'] = self._measurement_properties[0]['nodata']
             out_meta['count'] = len(bands)
-            # ToDo: Coordinates seem to be shifted by resolution/2
-            out_meta['transform'] = Affine(self._coverage_properties['transform'][0],
-                                           self._coverage_properties['transform'][1],
-                                           self._coverage_properties['transform'][2],
-                                           self._coverage_properties['transform'][3],
-                                           self._coverage_properties['transform'][4],
-                                           self._coverage_properties['transform'][5])
-
+            out_meta['transform'] = Affine(self._coverage_properties['resx'],
+                                           0.0,
+                                           minx,
+                                           0.0,
+                                           self._coverage_properties['resy'],
+                                           maxy)
+            LOGGER.debug('Writing to in-memory file')
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
                     # input is expected as (bands, rows, cols)
                     dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))
-
-                LOGGER.info('Returning data as GeoTIFF')
+                LOGGER.debug('Finished writing to in-memory file')
                 return memfile.read()
 
         else:
             LOGGER.info('Returning data as netCDF')
+            # ToDo: what if different measurements have different dtypes?
+            for data_var in dataset.data_vars:
+                dtype = dataset[data_var].dtype.name
+                break
+
+            # scipy cannot save arrays with unsigned type to netCDF
+            if dtype.startswith('u'):
+                dataset = dataset.astype(CAST_MAP[dtype], copy=False)
+
             # Note: "If no path is provided, this function returns the resulting netCDF file as bytes; in this case,
             # we need to use scipy, which does not support netCDF version 4 (the default format becomes NETCDF3_64BIT)."
             # (http://xarray.pydata.org/en/stable/generated/xarray.Dataset.to_netcdf.html)
+            # ToDo: implement netCDF version 4 option using in-memory file with lib netCDF4
+            #       (http://unidata.github.io/netcdf4-python/#in-memory-diskless-datasets)
+            #        see also https://stackoverflow.com/questions/46433812/simple-conversion-of-netcdf4-dataset-to-xarray-dataset
             return dataset.to_netcdf()
 
     def gen_covjson(self, metadata, dataset):
@@ -319,7 +349,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         LOGGER.info('bands selected: {}'.format(bands_select))
         for bs in bands_select:
-
             parameter = {
                 'type': 'Parameter',
                 'description': bs,
@@ -357,6 +386,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
          Provide coverage domainset
          :returns: CIS JSON object of domainset metadata
          """
+
+        # The grid may be very large and contain a lot of nodata values.
+        # Does the (draft) spec of API Coverages provide means to indicate where useful data is actually?
 
         domainset = {
             'type': 'DomainSetType',
@@ -399,9 +431,6 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                     }]
                 }
             },
-            # '_meta': {
-            #     'tags': self._coverage_properties['tags']
-            # }
         }
 
         return domainset
@@ -427,7 +456,9 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                 },
                 "_meta": {
                     "tags": {
-                        "Aliases": self._measurement_properties[row]['aliases'],
+                        "Aliases": self._measurement_properties[row]['aliases']
+                        if self._measurement_properties[row]['aliases'] is not None and
+                           self._measurement_properties[row]['aliases'] != "NaN" else "NaN",
                     }
                 }
             })
@@ -450,99 +481,50 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         :returns: `dict` of coverage properties
         """
 
-        # Note:
-        # - Some metadata are specified on product level and some on dataset level or even on both (e.g. crs)
-        # - Some (product) metadata are optional, thus they may not be available for all products
-        # - Different datasets for the same product may have different crs
+        # Note that in Open Data Cube:
+        # - some metadata are specified on product level and some on dataset level or even on both (e.g. crs)
+        # - some product level metadata are optional, thus they may not be available for all products
+        # - different datasets for the same product may have different crs
+        # - different datasets for the same product or different measurements within one dataset may have different resolutions
 
-        # ---------------- #
-        # Product metadata #
-        # ---------------- #
-        # With datacube versions > 1.8.3, metadata can alternatively be obtained like this:
-        # self.dc.index.products.get_by_name(self.product_name).default_crs
-        # https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.model.DatasetType.html#datacube.model.DatasetType
+        # ------------------------------- #
+        # Get metadata and do some checks #
+        # ------------------------------- #
+        crs_set = self.dc.get_crs_set(self.data)
+        resolution_set = self.dc.get_resolution_set(self.data)
+        bbox = self._get_bbox()
 
-        product_metadata = self.dc.get_product_by_id(self.data)
-
-        if product_metadata is None:
-            raise RuntimeError("Could not retrieve product '{}'".format(self.data))
-
-        res = None
-        crs_str = None
-
-        if 'storage' in product_metadata.definition.keys() and \
-                'resolution' in product_metadata.definition.get('storage').keys():
-            res = product_metadata.definition.get('storage').get('resolution')
-
-            if 'crs' in product_metadata.definition.get('storage').keys():
-                crs_str = str(product_metadata.definition.get('storage').get('crs'))
-
-        if res is not None:
-            if isinstance(res, tuple):
-                # ToDo: check coordinate order!
-                resx = res[1]
-                resy = res[0]
-            elif isinstance(res, dict) and 'x' in res.keys() and 'y' in res.keys():
-                resx = res.get('x')
-                resy = res.get('y')
+        if len(crs_set) > 1:
+            LOGGER.warning("Product {} has datasets with different coordinate reference systems. "
+                           "All datasets will be assumed to have WGS84 as native crs from now on.".format(self.data))
+            self.crs_obj = CRS_DATACUBE('epsg:4326')
         else:
-            resx = None
-            resy = None
+            self.crs_obj = next(iter(crs_set))
 
-        # spatial_dimensions = product_metadata.iloc[0]['spatial_dimensions']
-        # if isinstance(spatial_dimensions, tuple):
-        #     # ToDo: check axis order!
-        #     dim_we = spatial_dimensions[1]
-        #     dim_ns = spatial_dimensions[0]
-        # else:
-        #     dim_we = None
-        #     dim_ns = None
+        if len(resolution_set) > 1:
+            msg = "Product {} has datasets with different spatial resolutions. This is not supported yet. " \
+                  "Please check and change your Open Data Cube dataset definitions.".format(self.data)
+            LOGGER.warning(msg)
+            raise ProviderQueryError(msg)
+        else:
+            res = next(iter(resolution_set))
+            resx = resx_native = res[0]
+            resy = resy_native = res[1]
+            # Resolution has to be converted if ODC storage crs and collection crs differ and ODC storage crs is projected.
+            # We assume there is no mixture of geographic and projected reference systems in the datasets.
+            # Conversion:
+            # 1° difference in latitude and longitude - for longitude this is only true at the equator;
+            # the distance is short when moving towards the poles - is approx. 111 km. We apply a simple conversion
+            # using the factor 100,000 to obtain a reasonable grid.
+            # ToDo: review the conversion from meter to degree
+            if len(crs_set) > 1 and next(iter(crs_set)).projected:
+                resx = meter2degree(resx_native)
+                resy = meter2degree(resy_native)
+                LOGGER.warning("Using WGS84 instead of storage crs. "
+                               "Resolution is converted from {} to {}".format((resx_native, resy_native), (resx, resy)))
 
-        num_bands = self.dc.number_of_bands(self.data)
-
-        # ---------------- #
-        # Dataset metadata #
-        # ---------------- #
-        crs_list = []
-        resx_list = []
-        resy_list = []
-        transform_list = []
-        dim_list = []
-        # ToDo can we replace this for-loop by using OdcConnector.bbox_of_product()?
-        for dataset in self.dc.get_datasets_for_product(self.data):
-            crs_list.append(dataset.crs)
-            # ToDo: check coordinate order!
-            resx_list.append(dataset.metadata_doc['grids']['default']['transform'][0])
-            resy_list.append(dataset.metadata_doc['grids']['default']['transform'][4])
-            transform_list.append(dataset.metadata_doc['grids']['default']['transform'])
-            dim_list.append(dataset.crs.dimensions)
-
-        # Check if all datasets have the same crs, resolution and transform
-        if len(set(crs_list)) > 1:
-            LOGGER.warning("Product {} has datasets with different coordinate reference systems.".format(self.data))
-        if len(set(resx_list)) > 1 or len(set(resy_list)) > 1:
-            LOGGER.warning("Product {} has datasets with different spatial resolutions.".format(self.data))
-        if len(set(tuple(i) for i in transform_list)) > 1:
-            LOGGER.warning("Product {} has datasets with different transforms.".format(self.data))
-
-        # Use dataset metadata if metadata was not specified on product level
         # ToDo: support different crs/resolution for different datasets including reprojection
-        if crs_str is None or isnull(crs_str):
-            self.crs_obj = crs_list[0]
-        else:
-            self.crs_obj = CRS_DATACUBE(crs_str)
-
-        if resx is None:
-            resx = resx_list[0]
-        if resy is None:
-            resy = resy_list[0]
-
-        transform = transform_list[0]
-
-        # if dim_we is None:
-        #     dim_we = dim_list[1]
-        # if dim_ns is None:
-        #     dim_ns = dim_list[0]
+        #       and resampling (need to wait for API Coverages spec extensions)
 
         # -------------- #
         # Set properties #
@@ -559,13 +541,11 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             'bbox_units': 'deg',
             'x_axis_label': 'Lon',
             'y_axis_label': 'Lat',
-            'width': abs((bbox.right - bbox.left) / resx),
-            'height': abs((bbox.top - bbox.bottom) / resy),
+            'width': abs((bbox.right - bbox.left) / abs(resx)),
+            'height': abs((bbox.top - bbox.bottom) / abs(resy)),
             'resx': resx,
             'resy': resy,
-            'transform': transform,
-            'num_bands': num_bands,
-            # 'tags': 'tags'
+            'num_bands': (self.dc.number_of_bands(self.data)),
         }
 
         if self.crs_obj.projected:
@@ -592,13 +572,19 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         properties = []
         for row in range(0, len(measurement_metadata)):
+            # for netCDF unsigned dtypes are not possible at the moment due to limitations of xarray.Dataset.to_netcdf()
+            dtype = measurement_metadata.iloc[row]['dtype']
+            if self.native_format.lower() == 'netcdf' and dtype.startswith('u'):
+                dtype = CAST_MAP[dtype]
+
             properties.append({
                 "id": row + 1,
                 "name": measurement_metadata.iloc[row]['name'],
-                "dtype": measurement_metadata.iloc[row]['dtype'],
+                "dtype": dtype,
                 "nodata": measurement_metadata.iloc[row]['nodata'],
                 "unit": measurement_metadata.iloc[row]['units'],
-                "aliases": measurement_metadata.iloc[row]['aliases'] if 'aliases' in measurement_metadata.columns else None,
+                "aliases": measurement_metadata.iloc[row]['aliases']
+                if 'aliases' in measurement_metadata.columns else "None",
             })
 
         return properties

@@ -74,20 +74,23 @@ exclude products  : {}""".format(args.infile, args.outfile, args.exclude_product
     return args
 
 
-def _create_resource_from_odc_product(product: DatasetType, bbox: BoundingBox) -> dict:
+def _create_resource_from_odc_product(product: DatasetType, bbox: BoundingBox, format_set: set) -> dict:
     """
-    Create resource from Open Data CUbe product
+    Create resource from Open Data Cube product
 
     :param product: ODC product, datacube.model.DatasetType
     :param bbox: bbox in WGS84!!!
+    :param format_set: set of format strings (e.g. 'GeoTIFF' or 'netCDF')
     :return: dict
     """
 
     left, bottom, right, top = bbox
     if product.fields['format'] is not None:
         format_name = product.fields['format']
+    elif len(format_set) == 1:
+        format_name = next(iter(format_set))
     else:
-        format_name = 'NetCDF'
+        format_name = 'GeoTIFF'
 
     links = []
     if 'links' in product.metadata_doc.keys():
@@ -148,7 +151,7 @@ def main():
     data = {'resources': {}}
 
     products = dc.list_product_names()
-    LOGGER.info("Start porcessing {} products in ODC instance".format(len(products)))
+    LOGGER.info("Start processing {} products in ODC instance".format(len(products)))
     idx = 1
     for dc_product_name in products:
         LOGGER.info("[{}/{}] Processing product '{}'".format(idx, len(products), dc_product_name))
@@ -158,6 +161,9 @@ def main():
         else:
             LOGGER.info("[{}/{}] Including product '{}'".format(idx, len(products), dc_product_name))
             dc_product = dc.get_product_by_id(dc_product_name)
+            format_set = set()
+            for dataset in dc.get_datasets_for_product(dc_product.name):
+                format_set.add(dataset.format)
             # Make sure bbox is in WGS84
             if len(dc.get_crs_set(dc_product.name)) == 1:
                 bbox = convert_datacube_bbox_to_wgs84(dc.bbox_of_product(dc_product.name),
@@ -165,7 +171,7 @@ def main():
             else:
                 bbox = dc.bbox_of_product(dc_product.name)
 
-            data['resources'][dc_product.name] = _create_resource_from_odc_product(dc_product, bbox)
+            data['resources'][dc_product.name] = _create_resource_from_odc_product(dc_product, bbox, format_set)
 
         idx = idx + 1
 

@@ -70,13 +70,28 @@ def test__create_resource_from_odc_product():
     assert created_resource['extents']['spatial']['bbox'][3] == 4.0
     assert created_resource['extents']['spatial']['crs'] == 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
     assert created_resource['providers'] is not None
-    assert len(created_resource['providers']) == 1
+    assert len(created_resource['providers']) == 3
+    # json
     assert created_resource['providers'][0]['type'] == 'coverage'
     assert created_resource['providers'][0]['name'] == 'odcprovider.OpenDataCubeCoveragesProvider'
     assert created_resource['providers'][0]['data'] == 'dsm__MB__The_Pas_2014'
     assert created_resource['providers'][0]['format'] is not None
-    assert created_resource['providers'][0]['format']['name'] == 'NetCDF'
-    assert created_resource['providers'][0]['format']['mimetype'] == 'application/netcdf'
+    assert created_resource['providers'][0]['format']['name'] == 'json'
+    assert created_resource['providers'][0]['format']['mimetype'] == 'application/json'
+    # NetCDF
+    assert created_resource['providers'][1]['type'] == 'coverage'
+    assert created_resource['providers'][1]['name'] == 'odcprovider.OpenDataCubeCoveragesProvider'
+    assert created_resource['providers'][1]['data'] == 'dsm__MB__The_Pas_2014'
+    assert created_resource['providers'][1]['format'] is not None
+    assert created_resource['providers'][1]['format']['name'] == 'NetCDF'
+    assert created_resource['providers'][1]['format']['mimetype'] == 'application/netcdf'
+    # GeoTIFF
+    assert created_resource['providers'][2]['type'] == 'coverage'
+    assert created_resource['providers'][2]['name'] == 'odcprovider.OpenDataCubeCoveragesProvider'
+    assert created_resource['providers'][2]['data'] == 'dsm__MB__The_Pas_2014'
+    assert created_resource['providers'][2]['format'] is not None
+    assert created_resource['providers'][2]['format']['name'] == 'GeoTIFF'
+    assert created_resource['providers'][2]['format']['mimetype'] == 'application/geotiff'
     assert len(created_resource['keywords']) == 6
     assert created_resource['keywords'][0] == 'MB'
     assert created_resource['keywords'][1] == 'dsm'

@@ -86,8 +86,7 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         # 'resolution': (-1.0, 1.0)
         # }
         #
-        # ToDo woher den Spatial Extend des Products?
-        # ToDo datasets oder measurements auflisten? tendiere zu measurements
+        # ToDo list datasets or measurements?
 
         if limit < 1:
             raise ProviderQueryError("limit < 1 makes no sense!")
@@ -125,39 +124,11 @@ class OpenDataCubeRecordsProvider(BaseProvider):
         """
         LOGGER.debug('Fetching identifier {}'.format(identifier))
 
-        return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier))
+        return self._encode_dataset_type_as_record(self.dc.get_product_by_id(identifier), is_item=True)
 
-    def _encode_as_record(self, product: DatasetType) -> dict:
-        # product = self.dc.index.products.get_by_name(self.data)
-        #
-        # measurements = list(filter(lambda d: d['product'] in self.data,
-        #                            self.dc.list_measurements(with_pandas=False)))
-        #
-        # features = [{
-        #     'id': product.name,
-        #     'properties': [
-        #
-        #     ]
-        # }]
-        return {
-            'id': product.name,
-            'properties': self._encode_record_properties(product)
-        }
-
-    def _encode_record_properties(self, product):
-        properties = {}
-
-        for property in product.keys():
-            properties.update({property: product.get(property)})
-
-        # properties derived via datacube.utils.documents.DocReader
-        # ToDo verify properties.update(product.metadata.fields)
-
-        return properties
-
-    def _encode_dataset_type_as_record(self, product):
+    def _encode_dataset_type_as_record(self, product: str, is_item: bool = False) -> dict:
         bbox = self.dc.wgs84_bbox_of_product(product.name)
-        return {
+        record = {
             'id': product.name,
             'type': 'Feature',
             'geometry': {
@@ -170,10 +141,11 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                     [bbox.left, bbox.top]
                 ]]
             },
-            'properties': self._encode_dataset_type_properties(product)
+            'properties': self._encode_dataset_type_properties(product, is_item=is_item)
         }
+        return record
 
-    def _encode_dataset_type_properties(self, product):
+    def _encode_dataset_type_properties(self, product: str, is_item: bool = False) -> dict:
         properties = {}
         # properties from metadata doc
         properties_to_skip = ['links']
@@ -184,8 +156,40 @@ class OpenDataCubeRecordsProvider(BaseProvider):
                     properties.update({metadata_key: product.metadata_doc.get(metadata_key).get('name')})
                 elif isinstance(property, list):
                     properties.update({metadata_key: property})
+            elif metadata_key == 'links' and \
+                    isinstance(product.metadata_doc.get(metadata_key), list) and \
+                    len(product.metadata_doc.get(metadata_key)) > 0 and \
+                    is_item:
+                # add links to associations entry
+                links = []
+                for link in product.metadata_doc.get(metadata_key):
+                    links.append({
+                        'href': link.get('href'),
+                        'hreflang': link.get('hreflang'),
+                        'rel': link.get('rel'),
+                        'title': link.get('title'),
+                        'type': link.get('type')
+                    })
+                self._add_resource_associations(links, product.name)
+                properties.update({
+                    'associations': links
+                })
 
         # properties derived via datacube.utils.documents.DocReader
         properties.update(product.metadata.fields)
 
         return properties
+
+    def _add_resource_associations(self, links: list, name: str) -> None:
+        types_format_map = {
+            'application/geo+json': 'json',
+            'application/ld+json': 'jsonld',
+            'text/html': 'html'
+        }
+        for key, value in types_format_map.items():
+            links.append({
+                'rel': 'item',
+                'href': '../../{}?f={}'.format(name, value),
+                'type': key,
+                'title': name
+            })

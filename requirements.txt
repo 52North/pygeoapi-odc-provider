@@ -1,4 +1,5 @@
 datacube==1.8.3
+flask_cors
 numpy
 pandas
 pygeoapi
@@ -6,3 +7,4 @@ pyproj
 PyYAML
 rasterio
 scipy
+tinydb
