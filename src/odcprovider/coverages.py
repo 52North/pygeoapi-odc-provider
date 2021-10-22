@@ -226,6 +226,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ToDo: check if re-projection is necessary
 
         LOGGER.debug('RAW params for dc.load:\n{}'.format(json.dumps(params, indent=4)))
+        LOGGER.debug('self.data: "{}"'.format(self.data))
         dataset = self.dc.load(product=self.data, **params)
         LOGGER.debug('Received data from ODC')
 
@@ -243,6 +244,10 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ----------------- #
         if len(bands) == 0:
             bands = list(dataset.keys())  # select all bands
+
+            if len(bands) == 0:
+                # ToDo problem occured or empty result because of badly selected bbox!?
+                LOGGER.error("bands still empty!")
 
         out_meta = {
             'bbox': [minx, miny, maxx, maxy],
