@@ -276,11 +276,15 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                                            0.0,
                                            self._coverage_properties['resy'],
                                            maxy)
+            LOGGER.debug("out_meta:\n{}".format(json.dumps(out_meta, indent=4)))
             LOGGER.debug('Writing to in-memory file')
             with MemoryFile() as memfile:
                 with memfile.open(**out_meta) as dest:
                     # input is expected as (bands, rows, cols)
-                    dest.write(np.stack([dataset.squeeze(dim='time', drop=True)[bs].values for bs in bands], axis=0))
+                    dest.write(np.stack(
+                        [dataset.squeeze(dim='time', drop=True)[band].values for band in bands],
+                        axis=0)
+                    )
                 LOGGER.debug('Finished writing to in-memory file')
                 return memfile.read()
 
