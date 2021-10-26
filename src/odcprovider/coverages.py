@@ -24,7 +24,8 @@ from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
                                     ProviderGenericError,
-                                    ProviderQueryError)
+                                    ProviderQueryError,
+                                    ProviderInvalidQueryError)
 from pyproj import CRS, Transformer
 from rasterio import Affine
 from rasterio.io import MemoryFile
@@ -110,7 +111,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # ---------------- #
 
         bands = range_subset
-        LOGGER.info('Bands: {}, subsets: {}'.format(bands, subsets))
+        LOGGER.info('Bands: {}, subsets: {}, bbox: {}'.format(bands, subsets, bbox))
 
         # initial bbox, full extent of collection
         minx, miny, maxx, maxy = self._coverage_properties['bbox']
@@ -123,14 +124,14 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                 not bbox]):
             msg = 'spatial subsetting via bbox parameter or subset is mandatory'
             LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+            raise ProviderInvalidQueryError(msg)
 
         if all([self._coverage_properties['x_axis_label'] in subsets,
                 self._coverage_properties['y_axis_label'] in subsets,
                 len(bbox) > 0]):
             msg = 'bbox and subsetting by coordinates are exclusive'
             LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+            raise ProviderInvalidQueryError(msg)
 
         # -------------- #
         # Spatial subset #
@@ -181,7 +182,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         if minx > maxx or miny > maxy:
             msg = 'spatial subsetting invalid min > max'
             LOGGER.warning(msg)
-            raise ProviderQueryError(msg)
+            raise ProviderInvalidQueryError(msg)
 
         if self.data != 'landsat8_c2_l2':
             if self.crs_obj.projected:
@@ -192,12 +193,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             if maxx - minx > max_allowed_delta:
                 msg = 'spatial subsetting to large {}. please request max {}'.format(maxx - minx, max_allowed_delta)
                 LOGGER.warning(msg)
-                raise ProviderQueryError(msg)
+                raise ProviderInvalidQueryError(msg)
 
             if maxy - miny > max_allowed_delta:
                 msg = 'spatial subsetting to large {}. please request max {}'.format(maxy - miny, max_allowed_delta)
                 LOGGER.warning(msg)
-                raise ProviderQueryError(msg)
+                raise ProviderInvalidQueryError(msg)
 
         # ---------------------- #
         # Load data via datacube #
@@ -227,8 +228,14 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         LOGGER.debug('RAW params for dc.load:\n{}'.format(json.dumps(params, indent=4)))
         LOGGER.debug('self.data: "{}"'.format(self.data))
+        LOGGER.debug('Load data from ODC...')
         dataset = self.dc.load(product=self.data, **params)
-        LOGGER.debug('Received data from ODC')
+
+        if len(list(dataset.keys())) == 0:
+            LOGGER.debug('...request resulted in empty dataset')
+            raise ProviderInvalidQueryError('An empty dataset was returned. Please check your request.')
+        else:
+            LOGGER.debug('...received data')
 
         # Use 'dataset.time.attrs.pop('units', None)' to prevent the following error:
         # "ValueError: failed to prevent overwriting existing key units in attrs on variable 'time'.
@@ -243,11 +250,8 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         #    Return data    #
         # ----------------- #
         if len(bands) == 0:
-            bands = list(dataset.keys())  # select all bands
-
-            if len(bands) == 0:
-                # ToDo problem occured or empty result because of badly selected bbox!?
-                LOGGER.error("bands still empty!")
+            # if no bands are specified in the request ODC loads all bands by default
+            bands = list(dataset.keys())
 
         out_meta = {
             'bbox': [minx, miny, maxx, maxy],
