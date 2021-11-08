@@ -20,7 +20,6 @@ import logging
 import json
 # ToDo move to OdcConnector somehow
 from datacube.utils.geometry import CRS as CRS_DATACUBE, BoundingBox
-from pandas import isnull
 from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
                                     ProviderGenericError,
@@ -42,6 +41,23 @@ CAST_MAP = {
     'uint16': 'int32',
     'uint32': 'int64'
 }
+
+TYPE_URI_MAP = {
+    'int8': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/signedByte',
+    'int16': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/signedShort',
+    'int32': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/signedInt',
+    'int64': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/signedLong',
+    'uint8': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/unsignedByte',
+    'uint16': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/unsignedShort',
+    'uint32': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/unsignedInt',
+    'uint64': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/unsignedLong',
+    'float16': 'http://defs.opengis.net/vocprez/object?uri=http://www.opengis.net/def/dataType/OGC/0/float16',
+    'float32': 'http://defs.opengis.net/vocprez/object?uri=http://www.opengis.net/def/dataType/OGC/0/float32',
+    'float64': 'http://defs.opengis.net/vocprez/object?uri=http://www.opengis.net/def/dataType/OGC/0/float64',
+    'float128': 'http://defs.opengis.net/vocprez/object?uri=http://www.opengis.net/def/dataType/OGC/0/float128',
+    'double': 'http://defs.opengis.net/vocprez/object?uri=http%3A//www.opengis.net/def/dataType/OGC/0/double'
+}
+
 
 class OpenDataCubeCoveragesProvider(BaseProvider):
     """OpenDataCube Provider
@@ -404,23 +420,23 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         # Does the (draft) spec of API Coverages provide means to indicate where useful data is actually?
 
         domainset = {
-            'type': 'DomainSetType',
+            'type': 'DomainSet',
             'generalGrid': {
-                'type': 'GeneralGridCoverageType',
+                'type': 'GeneralGridCoverage',
                 'srsName': self._coverage_properties['crs_uri'],
                 'axisLabels': [
                     self._coverage_properties['x_axis_label'],
                     self._coverage_properties['y_axis_label']
                 ],
                 'axis': [{
-                    'type': 'RegularAxisType',
+                    'type': 'RegularAxis',
                     'axisLabel': self._coverage_properties['x_axis_label'],
                     'lowerBound': self._coverage_properties['bbox'][0],
                     'upperBound': self._coverage_properties['bbox'][2],
                     'uomLabel': self._coverage_properties['bbox_units'],
                     'resolution': self._coverage_properties['resx']
                 }, {
-                    'type': 'RegularAxisType',
+                    'type': 'RegularAxis',
                     'axisLabel': self._coverage_properties['y_axis_label'],
                     'lowerBound': self._coverage_properties['bbox'][1],
                     'upperBound': self._coverage_properties['bbox'][3],
@@ -428,16 +444,16 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                     'resolution': self._coverage_properties['resy']
                 }],
                 'gridLimits': {
-                    'type': 'GridLimitsType',
+                    'type': 'GridLimits',
                     'srsName': 'http://www.opengis.net/def/crs/OGC/0/Index2D',
                     'axisLabels': ['i', 'j'],
                     'axis': [{
-                        'type': 'IndexAxisType',
+                        'type': 'IndexAxis',
                         'axisLabel': 'i',
                         'lowerBound': 0,
                         'upperBound': self._coverage_properties['width']
                     }, {
-                        'type': 'IndexAxisType',
+                        'type': 'IndexAxis',
                         'axisLabel': 'j',
                         'lowerBound': 0,
                         'upperBound': self._coverage_properties['height']
@@ -458,14 +474,17 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
         for row in range(0, len(self._measurement_properties)):
             fields.append({
                 "id": self._measurement_properties[row]['id'],
-                "type": "QuantityType",
+                "type": "Quantity",
                 "name": self._measurement_properties[row]['name'],
-                "definition": self._measurement_properties[row]['dtype'],
+                # "definition": "http://opengis.net/def/property/OGC/0/Radiance", # ToDo: get correct definition (semantics) for arbitrary fields
                 "nodata": self._measurement_properties[row]['nodata'],
                 "uom": {
                     # "id": "http://www.opengis.net/def/uom/UCUM/[C]", # ToDo: get correct uri for arbitrary units
                     "type": "UnitReference",
                     "code": self._measurement_properties[row]['unit']
+                },
+                "encodingInfo": {
+                    "dataType": TYPE_URI_MAP[self._measurement_properties[row]['dtype']] or self._measurement_properties[row]['dtype']
                 },
                 "_meta": {
                     "tags": {
@@ -477,7 +496,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             })
 
         rangetype = {
-            "type": "DataRecordType",
+            "type": "DataRecord",
             "field": fields
         }
 
