@@ -24,7 +24,8 @@ from pygeoapi.provider.base import (BaseProvider,
                                     ProviderConnectionError,
                                     ProviderGenericError,
                                     ProviderQueryError,
-                                    ProviderInvalidQueryError)
+                                    ProviderInvalidQueryError,
+                                    ProviderNoDataError)
 from pyproj import CRS, Transformer
 from rasterio import Affine
 from rasterio.io import MemoryFile
@@ -207,12 +208,12 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                 max_allowed_delta = 0.125
 
             if maxx - minx > max_allowed_delta:
-                msg = 'spatial subsetting to large {}. please request max {}'.format(maxx - minx, max_allowed_delta)
+                msg = 'spatial subsetting too large {}. please request max {}'.format(maxx - minx, max_allowed_delta)
                 LOGGER.warning(msg)
                 raise ProviderInvalidQueryError(msg)
 
             if maxy - miny > max_allowed_delta:
-                msg = 'spatial subsetting to large {}. please request max {}'.format(maxy - miny, max_allowed_delta)
+                msg = 'spatial subsetting too large {}. please request max {}'.format(maxy - miny, max_allowed_delta)
                 LOGGER.warning(msg)
                 raise ProviderInvalidQueryError(msg)
 
@@ -249,7 +250,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
 
         if len(list(dataset.keys())) == 0:
             LOGGER.debug('...request resulted in empty dataset')
-            raise ProviderInvalidQueryError('An empty dataset was returned. Please check your request.')
+            raise ProviderNoDataError('An empty dataset was returned. Please check your request.')
         else:
             LOGGER.debug('...received data')
 
