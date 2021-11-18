@@ -489,8 +489,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
                 "_meta": {
                     "tags": {
                         "Aliases": self._measurement_properties[row]['aliases']
-                        if self._measurement_properties[row]['aliases'] is not None and
-                           self._measurement_properties[row]['aliases'] != "NaN" else "NaN",
+                        if self._measurement_properties[row]['aliases'] is not None else "NaN",
                     }
                 }
             })
@@ -609,14 +608,17 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             if self.native_format.lower() == 'netcdf' and dtype.startswith('u'):
                 dtype = CAST_MAP[dtype]
 
+            aliases = None
+            if 'aliases' in measurement_metadata.columns and isinstance(measurement_metadata.iloc[row]['aliases'], list):
+                aliases = measurement_metadata.iloc[row]['aliases']
+
             properties.append({
                 "id": row + 1,
                 "name": measurement_metadata.iloc[row]['name'],
                 "dtype": dtype,
                 "nodata": measurement_metadata.iloc[row]['nodata'],
                 "unit": measurement_metadata.iloc[row]['units'],
-                "aliases": measurement_metadata.iloc[row]['aliases']
-                if 'aliases' in measurement_metadata.columns else "None",
+                "aliases": aliases,
             })
 
         return properties
