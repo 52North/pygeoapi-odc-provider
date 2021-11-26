@@ -93,7 +93,7 @@ class OpenDataCubeCoveragesProvider(BaseProvider):
             self.axes = self._coverage_properties['axes']
             self.crs = self._coverage_properties['crs_uri']
             self.num_bands = self._coverage_properties['num_bands']
-            self.fields = [str(num) for num in range(1, self.num_bands + 1)]
+            self.fields = [field['name'] for field in self._measurement_properties]
             LOGGER.info('Finished initializing product {}'.format(self.data))
         except Exception as err:
             LOGGER.warning(err)
