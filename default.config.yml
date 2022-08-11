@@ -1,0 +1,97 @@
+# Copyright (C) 2021-2021 52°North Spatial Information Research GmbH
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as published
+# by the Free Software Foundation.
+#
+# If the program is linked with libraries which are licensed under one of
+# the following licenses, the combination of the program with the linked
+# library is not considered a "derivative work" of the program:
+#
+#     - Apache License, version 2.0
+#     - Apache Software License, version 1.0
+#     - GNU Lesser General Public License, version 3
+#     - Mozilla Public License, versions 1.0, 1.1 and 2.0
+#     - Common Development and Distribution License (CDDL), version 1.0
+#
+# Therefore the distribution of the program linked with libraries licensed
+# under the aforementioned licenses, is permitted by the copyright holders
+# if the distribution is compliant with both the GNU General Public
+# License version 2 and the aforementioned licenses.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+#
+server:
+    bind:
+        host: 0.0.0.0
+        port: 80
+    url: SERVER_URL
+    mimetype: application/json; charset=UTF-8
+    encoding: utf-8
+    language: en-US
+    pretty_print: True
+    cors: True
+    limit: 10
+    manager:
+        name: TinyDB
+        connection: /tmp/pygeoapi-process-manager.db
+        output_dir: /tmp/pygeoapi-process-outputs/
+    map:
+        url: https://tile.openstreetmap.org/{z}/{x}/{y}.png
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+logging:
+    level: LOG_LEVEL
+
+metadata:
+    identification:
+        title: OpenDataCube - OGC API Records/Coverages/Processes
+        description: pygeoapi instance providing OGC APIs Records/Coverages/Process to an OpenDataCubeInstance
+        keywords:
+            - geospatial
+            - data
+            - api
+            - OpenDataCube
+        keywords_type: theme
+        terms_of_service: https://creativecommons.org/licenses/by/4.0/
+        url: SERVER_URL
+    license:
+        name: CC-BY 4.0 license
+        url: https://creativecommons.org/licenses/by/4.0/
+    provider:
+        name: PROVIDER_NAME
+        url: PROVIDER_URL
+    contact:
+        email: CONTACT_MAIL
+        url: CONTACT_URL
+        role: pointOfContact
+
+###################################################################################################
+
+resources:
+    catalog:
+      type: collection
+      title: Catalog
+      description: Catalog collection providing metadata using OGC API records
+      keywords:
+        - records
+        - metadata
+        - search
+      links:
+        - type: text/html
+          rel: canonical
+          title: OGC API records DRAFT OGC#20-004
+          href: https://docs.ogc.org/DRAFTS/20-004.html#record-schema-overview
+          hreflang: en-US
+      extents:
+        spatial:
+          bbox: [-180.0,180.0,-90.0,90]
+          # EPSG#4617
+          crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+      providers:
+        - type: record
+          name: odcprovider.OpenDataCubeRecordsProvider
+          data: not-used-atm

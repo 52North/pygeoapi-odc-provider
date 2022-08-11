@@ -1,0 +1,105 @@
+# Copyright (C) 2021-2022 52°North Spatial Information Research GmbH
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as published
+# by the Free Software Foundation.
+#
+# If the program is linked with libraries which are licensed under one of
+# the following licenses, the combination of the program with the linked
+# library is not considered a "derivative work" of the program:
+#
+#     - Apache License, version 2.0
+#     - Apache Software License, version 1.0
+#     - GNU Lesser General Public License, version 3
+#     - Mozilla Public License, versions 1.0, 1.1 and 2.0
+#     - Common Development and Distribution License (CDDL), version 1.0
+#
+# Therefore the distribution of the program linked with libraries licensed
+# under the aforementioned licenses, is permitted by the copyright holders
+# if the distribution is compliant with both the GNU General Public
+# License version 2 and the aforementioned licenses.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+#
+name: build push docker image
+
+env:
+  TITLE: "52°North OpenDataCube Importer Image"
+  VENDOR: "52°North GmbH"
+  AUTHORS: "https://52North.org/"
+  DESCRIPTION: "52°OpenDataCube Importer Image"
+  LICENSE: "Enter spdx link to correct license"
+
+on:
+  workflow_dispatch:
+    inputs:
+      #
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context
+      #
+      tags:
+        description: "Please provide a git tag value, e.g. v0.1-manually-triggered.1"
+        required: true
+        type: string
+        default: "v0.1-manually-triggered.1"
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  push_to_registry:
+    name: build push docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+#      - name: Cache Docker layers
+#        uses: actions/cache@v2
+#        with:
+#          path: /tmp/.buildx-pygeoapi-odc-provider-cache/
+#          key: ${{ runner.os }}-buildx-pygeoapi-odc-provider-${{ github.sha }}
+#          # key: ${{ runner.os }}-buildx-pygeoapi-odc-provider-${{ hashFiles('Dockerfile') }}
+#          restore-keys: |
+#            ${{ runner.os }}-buildx-pygeoapi-odc-provider-
+#            ${{ runner.os }}-buildx-
+
+      - name: Set up Docker Buildkit env
+        uses: docker/setup-buildx-action@v2
+
+      - name: Extract metadata (tags, labels) for tagging Docker Image
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: 52north/opendatacube-importer
+          labels: |
+            "org.opencontainers.image.authors=${{ env.AUTHORS }}"
+            "org.opencontainers.image.vendor=${{ env.VENDOR }}"
+            "org.opencontainers.image.description=${{ env.DESCRIPTION }}"
+            "org.opencontainers.image.title=${{ env.TITLE }}"
+            "org.opencontainers.image.licenses=${{ env.LICENSE }}"
+          tags: |
+            type=match,pattern=v(.*),group=1,value=${{ github.event.inputs.tags }}
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+#          cache-from: type=local,src=/tmp/.buildx-pygeoapi-odc-provider-cache
+#          cache-to: type=local,dest=/tmp/.buildx-pygeoapi-odc-provider-cache-new,mode=max
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+#      - name: Move cache
+#        run: |
+#          rm -rfv /tmp/.buildx-pygeoapi-odc-provider-cache
+#          mv -v /tmp/.buildx-pygeoapi-odc-provider-cache-new /tmp/.buildx-pygeoapi-odc-provider-cache
