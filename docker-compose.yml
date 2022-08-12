@@ -1,0 +1,40 @@
+version: '3'
+services:
+  database:
+    image: postgres:13-buster
+    volumes:
+     - odc-database-data:/var/lib/postgresql
+    environment:
+    - POSTGRES_USER=opendatacube
+    - POSTGRES_PASSWORD=opendatacube
+    - POSTGRES_DB=opendatacube
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+
+  pygeoapi:
+#    image: 52north/pygeoapi-opendatacube
+    build:
+      context: .
+    volumes:
+      - odc-data:/odc/DATA
+    ports:
+      - "5000:80"
+    depends_on:
+      - database
+
+volumes:
+#  odc-database-data:
+#    labels:
+#      - "org.52north.contact=<contact>"
+#      - "org.52north.context=<context>"
+#  odc-data:
+#    labels:
+#      - "org.52north.contact=<contact>"
+#      - "org.52north.context=<context>"
+  odc-database-data:
+    external:
+      name: opendatacube-importer_odc-database-data
+  odc-data:
+    external:
+      name: opendatacube-importer_odc-data
