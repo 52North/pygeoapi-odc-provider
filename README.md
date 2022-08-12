@@ -88,6 +88,12 @@ To use products from Open Data Cube (ODC) in pygeoapi, they must be registered a
 The script `create_config.py` provides a convenient way to automatically generate a yml file containing resource entries for each ODC product.
 The script can optionally take an input file. The automatically generated resource entries will be merged/inserted there. The input file usually contains server and metadata information that is also needed to configure pygeoapi.
 
+## Docker
+
+A custom Dockerfile for pygeoapi is provided which extends the official [pygeoapi Docker image](https://hub.docker.com/r/geopython/pygeoapi) with the pygeoapi-odc-provider. 
+To import data in Open Data Cube the [opendatacube-importer](https://github.com/52North/opendatacube-importer) can be used. 
+
+
 ## Changelog
 
 * **0.3.0**: WIP records provider

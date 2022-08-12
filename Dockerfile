@@ -32,6 +32,10 @@
 # See https://wiki.52north.org/Documentation/ImageAndContainerLabelSpecification
 # regarding the used labels
 #
+# Information on the geopython/pygeoapi Docker image
+# - https://docs.pygeoapi.io/en/latest/running-with-docker.html
+# - https://github.com/geopython/pygeoapi/blob/master/Dockerfile
+#
 FROM geopython/pygeoapi:latest
 
 ENV PYTHONUNBUFFERED=1
@@ -52,11 +56,14 @@ RUN apt-get update \
     && apt-get install --assume-yes \
         libpq-dev \
         libglib2.0-0 \
-    && apt-get purge --assume-yes \
-        python3-dask \
-        python3-numpy \
     && apt-get autoremove --assume-yes \
-    && cp --verbose src/create_config.py ${HOME}/ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ./requirements.txt ./setup.py /tmp/
+
+COPY ./src /tmp/src
+
+RUN cd /tmp/ \
     && pip install --upgrade pip  \
     && pip install \
             --no-cache-dir \
@@ -65,17 +72,12 @@ RUN apt-get update \
             --no-warn-script-location \
             --requirement requirements.txt \
     && pip install . \
-    && mkdir -pv ${HOME}/data \
-    && apt-get autoremove --assume-yes \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -pv ${HOME}/odc/DATA
+    && cp -v /tmp/src/create_config.py ${HOME}
 
-COPY ./src ${HOME}
+COPY default.config.yml ${HOME}/local.config.init.yml
+COPY default.datacube.conf ${HOME}/datacube.conf
 
-RUN sed --in-place 's@echo "Trying to generate openapi.yml"@echo "Generating ODC based config"\npython3 /pygeoapi/create_config.py --infile=/pygeoapi/local.config.init.yml --outfile=/pygeoapi/local.config.yml --exclude-products=${EXCLUDE_PRODUCTS}\n\necho "Trying to generate openapi.yml"@g' /entrypoint.sh
-
-COPY default.config.yml /pygeoapi/local.config.init.yml
-COPY default.datacube.conf /pygeoapi/datacube.conf
+RUN sed --in-place 's@echo "Trying to generate openapi.yml"@echo "Generating ODC based config"\npython3 ${PYGEOAPI_HOME}/create_config.py --infile=${PYGEOAPI_HOME}/local.config.init.yml --outfile=${PYGEOAPI_HOME}/local.config.yml --exclude-products=${EXCLUDE_PRODUCTS}\n\necho "Trying to generate openapi.yml"@g' /entrypoint.sh
 
 ARG GIT_COMMIT
 LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
@@ -84,6 +86,6 @@ ARG BUILD_DATE
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 
 ARG VERSION=latest
-ARG IMG_REF=52north/ogc-tb-17-pygeoapi
+ARG IMG_REF=52north/pygeoapi-opendatacube
 LABEL org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.ref.name="${IMG_REF}_${VERSION}"
