@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2021 52°North Spatial Information Research GmbH
+# Copyright (C) 2021-2022 52°North Spatial Information Research GmbH
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -28,9 +28,10 @@ server:
     bind:
         host: 0.0.0.0
         port: 80
-    url: SERVER_URL
+    url: http://localhost:5000
     mimetype: application/json; charset=UTF-8
     encoding: utf-8
+    gzip: false
     language: en-US
     pretty_print: True
     cors: True
@@ -42,14 +43,15 @@ server:
     map:
         url: https://tile.openstreetmap.org/{z}/{x}/{y}.png
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    ogc_schemas_location: /schemas.opengis.net
 
 logging:
-    level: LOG_LEVEL
+    level: ERROR
 
 metadata:
     identification:
-        title: OpenDataCube - OGC API Records/Coverages/Processes
-        description: pygeoapi instance providing OGC APIs Records/Coverages/Process to an OpenDataCubeInstance
+        title: OpenDataCube - OGC API
+        description: pygeoapi instance providing OGC APIs to an OpenDataCubeInstance
         keywords:
             - geospatial
             - data
@@ -57,16 +59,15 @@ metadata:
             - OpenDataCube
         keywords_type: theme
         terms_of_service: https://creativecommons.org/licenses/by/4.0/
-        url: SERVER_URL
+        url: https://github.com/52North/pygeoapi-odc-provider
     license:
         name: CC-BY 4.0 license
         url: https://creativecommons.org/licenses/by/4.0/
     provider:
-        name: PROVIDER_NAME
-        url: PROVIDER_URL
+        name: 52°North Spatial Information Research GmbH
+        url: https://52north.org/
     contact:
-        email: CONTACT_MAIL
-        url: CONTACT_URL
+        url: https://52north.org/about-us/contact-us/
         role: pointOfContact
 
 ###################################################################################################
