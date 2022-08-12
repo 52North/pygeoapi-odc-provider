@@ -152,14 +152,13 @@ def main():
 
     products = dc.list_product_names()
     LOGGER.info("Start processing {} products in ODC instance".format(len(products)))
-    idx = 1
-    for dc_product_name in products:
-        LOGGER.info("[{}/{}] Processing product '{}'".format(idx, len(products), dc_product_name))
+    for idx, dc_product_name in enumerate(products):
+        LOGGER.info("[{}/{}] Processing product '{}'".format(idx+1, len(products), dc_product_name))
         if dc_product_name in args.exclude_products:
             LOGGER.info("[{}/{}] Product '{}' is list of products to exclude, hence skipping it"
-                        .format(idx, len(products), dc_product_name))
+                        .format(idx+1, len(products), dc_product_name))
         else:
-            LOGGER.info("[{}/{}] Including product '{}'".format(idx, len(products), dc_product_name))
+            LOGGER.info("[{}/{}] Including product '{}'".format(idx+1, len(products), dc_product_name))
             dc_product = dc.get_product_by_id(dc_product_name)
             format_set = set()
             for dataset in dc.get_datasets_for_product(dc_product.name):
@@ -173,8 +172,6 @@ def main():
 
             data['resources'][dc_product.name] = _create_resource_from_odc_product(dc_product, bbox, format_set)
 
-        idx = idx + 1
-
     LOGGER.info("Finished processing {} products".format(len(products)))
 
     # Write to yaml file, merge with provided config yaml if given
@@ -185,6 +182,7 @@ def main():
         yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
 
     LOGGER.info("Finished processing ODC products")
+
 
 if __name__ == "__main__":
     main()
