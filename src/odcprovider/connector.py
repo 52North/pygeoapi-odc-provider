@@ -148,7 +148,12 @@ class OdcMetadataStore:
 
     @classmethod
     def _get_complex_active_measurements(cls, dc: Datacube) -> DataFrame:
-        return dc.list_measurements(show_archived=False, with_pandas=True)
+        if len(dc.list_measurements(show_archived=False, with_pandas=False)) == 0:
+            return DataFrame(columns=['name', 'dtype', 'units', 'nodata', 'aliases'])
+        else:
+            # With 'with_pandas=True' a KeyError is raised if there are no measurements:
+            #   KeyError: "None of ['product', 'measurement'] are in the columns"
+            return dc.list_measurements(show_archived=False, with_pandas=True)
 
     @classmethod
     def _get_crs_set_for_all_products(cls) -> dict:
