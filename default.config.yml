@@ -89,7 +89,7 @@ resources:
           hreflang: en-US
       extents:
         spatial:
-          bbox: [-180.0,180.0,-90.0,90]
+          bbox: [-180, -90, 180, 90]
           # EPSG#4617
           crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
       providers:
