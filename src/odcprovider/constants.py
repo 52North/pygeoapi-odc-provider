@@ -1,5 +1,5 @@
 # =================================================================
-# Copyright (C) 2021-2021 52°North Spatial Information Research GmbH
+# Copyright (C) 2021-2022 52°North Spatial Information Research GmbH
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ BBOX_COORD_PRECISION = "{:.4f}"
 Format string for BoundBox coordinates. Limits float output to four decimal places
 """
 
-CACHE_PICKLE = '/odc/DATA/odc_cache.pickle'
+CACHE_PICKLE = os.getenv('CACHE_PICKLE', '/odc/DATA/odc_cache.pickle')
 """
 Path to ODC cache pickle file
 
