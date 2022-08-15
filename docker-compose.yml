@@ -3,11 +3,12 @@ services:
   database:
     image: postgres:13-buster
     volumes:
-     - odc-database-data:/var/lib/postgresql
+     - odc-database-data:/var/lib/postgresql/data
     environment:
     - POSTGRES_USER=opendatacube
     - POSTGRES_PASSWORD=opendatacube
     - POSTGRES_DB=opendatacube
+    - PGDATA=/var/lib/postgresql/data/pgdata
     restart: unless-stopped
     ports:
       - "5432:5432"
