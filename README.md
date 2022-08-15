@@ -96,6 +96,7 @@ To import data in Open Data Cube the [opendatacube-importer](https://github.com/
 
 ## Changelog
 
+* **0.4.0**: add Dockerfile and docker-compose.yml
 * **0.3.0**: WIP records provider
 * **0.2.0**: add first processors
 * **0.0.1**: WIP coverages provider

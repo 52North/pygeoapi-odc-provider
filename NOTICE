@@ -11,9 +11,9 @@ limitations under the License.
 This project includes:
  Name                   Version    License
  --------------------------------------------------
- datacube               1.8.3      Apache Software License
+ datacube               1.8.7      Apache Software License
  numpy                  1.19.5     BSD
  pandas                 1.1.5      BSD
- pygeoapi               0.11.dev0  MIT License
+ pygeoapi               0.12.dev0  MIT License
  pyproj                 3.0.1      MIT License
  rasterio               1.2.2      BSD License

@@ -26,7 +26,7 @@ setup(
     name="pygeoapi-odc-provider",
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
-    version="0.3.0",
+    version="0.4.0",
     description="pygeoapi provider plugin for Open Data Cube",
     long_description="pygeoapi provider plugin for Open Data Cube",
     long_description_content_type="text/markdown",
