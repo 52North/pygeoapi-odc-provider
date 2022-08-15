@@ -73,7 +73,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: 52north/opendatacube-importer
+          images: 52north/pygeoapi-opendatacube
           labels: |
             "org.opencontainers.image.authors=${{ env.AUTHORS }}"
             "org.opencontainers.image.vendor=${{ env.VENDOR }}"
