@@ -67,7 +67,15 @@ metadata:
         name: 52°North Spatial Information Research GmbH
         url: https://52north.org/
     contact:
+        address: Martin-Luther-King-Weg 24
+        city: Münster
+        stateorprovince: NRW
+        postalcode: 48155
+        country: Germany
+        email: info@52north.org
         url: https://52north.org/about-us/contact-us/
+        hours: Mo-Fr 09:00-16:00 CE(S)T
+        instructions: During hours of service. Off on weekends.
         role: pointOfContact
 
 ###################################################################################################
